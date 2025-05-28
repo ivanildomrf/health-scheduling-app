@@ -20,39 +20,53 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { authClient } from "@/lib/auth-client";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 const registerSchema = z.object({
   name: z.string().trim().min(1, { message: "Nome é obrigatório" }),
-  surname: z.string().trim().min(1, { message: "Sobrenome é obrigatório" }),
-  lastname: z.string().trim().min(1, { message: "Sobrenome é obrigatório" }),
   email: z
     .string()
     .trim()
-    .min(1, { message: "Email é obrigatório" })
+    .min(1, { message: "E-mail é obrigatório" })
     .email({ message: "Email inválido" }),
   password: z
     .string()
     .trim()
-    .min(8, { message: "Senha deve ter pelo menos 8 caracteres" }),
+    .min(8, { message: "A Senha deve ter pelo menos 8 caracteres" }),
 });
 
 const SignUpForm = () => {
+  const router = useRouter();
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       name: "",
-      surname: "",
-      lastname: "",
       email: "",
       password: "",
     },
   });
 
-  function onSubmit(values: z.infer<typeof registerSchema>) {
+  async function onSubmit(values: z.infer<typeof registerSchema>) {
     console.log(values);
+    await authClient.signUp.email(
+      {
+        name: values.name,
+        email: values.email,
+        password: values.password,
+        callbackURL: "/dashboard",
+      },
+      {
+        onSuccess: () => {
+          form.reset();
+          router.push("/dashboard");
+        },
+      },
+    );
   }
 
   return (
@@ -111,8 +125,16 @@ const SignUpForm = () => {
             />
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full">
-              Criar conta
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={form.formState.isSubmitting}
+            >
+              {form.formState.isSubmitting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                "Criar conta"
+              )}
             </Button>
           </CardFooter>
         </form>
