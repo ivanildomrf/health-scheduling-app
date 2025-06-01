@@ -398,11 +398,11 @@ const UpsertProfessionalForm = ({
               </FormItem>
             )}
           />
-          <DialogFooter>
+          <DialogFooter className="flex justify-between">
             <Button
               type="submit"
               disabled={upsertProfessionalAction.isExecuting}
-              className="w-full"
+              className="ml-auto"
             >
               {upsertProfessionalAction.isExecuting
                 ? professional

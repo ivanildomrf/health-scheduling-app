@@ -1,5 +1,16 @@
 "use client";
-
+import { deleteProfessional } from "@/actions/delete-professional";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,8 +24,10 @@ import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { professionalsTable } from "@/db/schema";
 import { formatCurrencyInCentsToBRL } from "@/helpers/currency";
-import { CalendarIcon, ClockIcon, PencilIcon } from "lucide-react";
+import { CalendarIcon, ClockIcon, PencilIcon, TrashIcon } from "lucide-react";
+import { useAction } from "next-safe-action/hooks";
 import { useState } from "react";
+import { toast } from "sonner";
 import { getAvailability } from "../helpers/availability";
 import UpsertProfessionalForm from "./upsert-professional-form";
 interface ProfessionalCardProps {
@@ -29,6 +42,22 @@ const ProfessionalCard = ({ professional }: ProfessionalCardProps) => {
     .split(" ")
     .map((name) => name.charAt(0))
     .join("");
+
+  const deleteProfessionalAction = useAction(deleteProfessional, {
+    onSuccess: () => {
+      toast.success("Médico deletado com sucesso");
+    },
+    onError: (error) => {
+      toast.error("Erro ao deletar médico");
+    },
+  });
+
+  const handleDeleteProfessionalClick = () => {
+    if (!professional) return;
+    deleteProfessionalAction.execute({
+      id: professional.id,
+    });
+  };
 
   const availability = getAvailability(professional);
   return (
@@ -62,7 +91,7 @@ const ProfessionalCard = ({ professional }: ProfessionalCardProps) => {
         </Badge>
       </CardContent>
       <Separator />
-      <CardFooter>
+      <CardFooter className="flex flex-col gap-2">
         <Dialog
           open={isUpsertProfessionalDialogOpen}
           onOpenChange={setIsUpsertProfessionalDialogOpen}
@@ -84,6 +113,38 @@ const ProfessionalCard = ({ professional }: ProfessionalCardProps) => {
             }}
           />
         </Dialog>
+        {professional && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="w-full">
+                <TrashIcon />
+                Deletar
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Tem certeza que deseja deletar o profissional?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação não pode ser revertida. Isso irá deletar o
+                  profissional e todas as consultas agendadas.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteProfessionalClick}
+                  disabled={deleteProfessionalAction.isExecuting}
+                >
+                  {deleteProfessionalAction.isExecuting
+                    ? "Deletando..."
+                    : "Deletar"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </CardFooter>
     </Card>
   );
