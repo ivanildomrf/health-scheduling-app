@@ -8,9 +8,22 @@ import {
   PageHeaderDescription,
   PageHeaderTitle,
 } from "@/components/ui/page-container";
+import { auth } from "@/lib/auth";
 import { Plus } from "lucide-react";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
-const DoctorsPage = () => {
+const DoctorsPage = async () => {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  if (!session?.user) {
+    redirect("/authentication");
+  }
+  console.log(session.user);
+  if (!session.user.clinic || !session.user.clinic?.id) {
+    redirect("/clinic-form");
+  }
   return (
     <PageContainer>
       <PageHeader>
