@@ -9,7 +9,7 @@ import {
   UserRound,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,10 +64,10 @@ const items = [
 
 export function AppSidebar() {
   const router = useRouter();
+  const session = authClient.useSession();
   const handleSignOut = async () => {
     await authClient.signOut({
       fetchOptions: {
-        cache: "no-store",
         onSuccess: () => {
           router.push("/authentication");
         },
@@ -103,9 +103,17 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <UserRound />
-                </Button>
+                <SidebarMenuButton size="lg">
+                  <Avatar>
+                    <AvatarFallback>F</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm">{session.data?.user.clinic.name}</p>
+                    <p className="text-muted-foreground text-sm">
+                      {session.data?.user.email}
+                    </p>
+                  </div>
+                </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem onClick={handleSignOut}>
