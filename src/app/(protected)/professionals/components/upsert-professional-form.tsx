@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { professionalsTable } from "@/db/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAction } from "next-safe-action/hooks";
 import { useForm } from "react-hook-form";
@@ -80,20 +81,27 @@ const formSchema = z
   );
 
 interface UpsertProfessionalFormProps {
+  professional?: typeof professionalsTable.$inferSelect;
   onSuccess?: () => void;
 }
 
-const UpsertProfessionalForm = ({ onSuccess }: UpsertProfessionalFormProps) => {
+const UpsertProfessionalForm = ({
+  professional,
+  onSuccess,
+}: UpsertProfessionalFormProps) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
-      specialty: "",
-      appointmentPrice: 0,
-      availableFromWeekDay: "1",
-      availableToWeekDay: "5",
-      availableFromTime: "",
-      availableToTime: "",
+      name: professional?.name ?? "",
+      specialty: professional?.speciality ?? "",
+      appointmentPrice: professional?.appointmentsPriceInCents
+        ? professional?.appointmentsPriceInCents / 100
+        : 0,
+      availableFromWeekDay:
+        professional?.availableFromWeekDay?.toString() ?? "1",
+      availableToWeekDay: professional?.availableToWeekDay?.toString() ?? "5",
+      availableFromTime: professional?.availableFromTime ?? "",
+      availableToTime: professional?.availableToTime ?? "",
     },
   });
 
@@ -110,6 +118,7 @@ const UpsertProfessionalForm = ({ onSuccess }: UpsertProfessionalFormProps) => {
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     upsertProfessionalAction.execute({
       ...values,
+      id: professional?.id,
       appointmentPriceInCents: values.appointmentPrice * 100,
       availableFromWeekDay: parseInt(values.availableFromWeekDay),
       availableToWeekDay: parseInt(values.availableToWeekDay),
@@ -119,9 +128,13 @@ const UpsertProfessionalForm = ({ onSuccess }: UpsertProfessionalFormProps) => {
   return (
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>Cadastrar Médico</DialogTitle>
+        <DialogTitle>
+          {professional ? professional.name : "Cadastrar Profissional"}
+        </DialogTitle>
         <DialogDescription>
-          Preencha o formulário abaixo para cadastrar um novo médico
+          {professional
+            ? "Edite as informações do profissional"
+            : "Preencha o formulário abaixo para cadastrar um novo profissional"}
         </DialogDescription>
       </DialogHeader>
       <Form {...form}>
@@ -391,8 +404,12 @@ const UpsertProfessionalForm = ({ onSuccess }: UpsertProfessionalFormProps) => {
               className="w-full"
             >
               {upsertProfessionalAction.isExecuting
-                ? "Cadastrando..."
-                : "Cadastrar"}
+                ? professional
+                  ? "Atualizando..."
+                  : "Salvando..."
+                : professional
+                  ? "Atualizar"
+                  : "Salvar"}
             </Button>
           </DialogFooter>
         </form>

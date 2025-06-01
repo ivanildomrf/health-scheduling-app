@@ -33,9 +33,9 @@ const ProfessionalsPage = async () => {
     <PageContainer>
       <PageHeader>
         <PageHeaderContent>
-          <PageHeaderTitle>Médicos</PageHeaderTitle>
+          <PageHeaderTitle>Profissionais</PageHeaderTitle>
           <PageHeaderDescription>
-            Aqui você pode gerenciar os médicos
+            Aqui você pode gerenciar os profissionais
           </PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>

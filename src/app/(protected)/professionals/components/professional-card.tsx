@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { professionalsTable } from "@/db/schema";
 import { formatCurrencyInCentsToBRL } from "@/helpers/currency";
 import { CalendarIcon, ClockIcon, PencilIcon } from "lucide-react";
+import { useState } from "react";
 import { getAvailability } from "../helpers/availability";
 import UpsertProfessionalForm from "./upsert-professional-form";
 interface ProfessionalCardProps {
@@ -21,6 +22,9 @@ interface ProfessionalCardProps {
 }
 
 const ProfessionalCard = ({ professional }: ProfessionalCardProps) => {
+  const [isUpsertProfessionalDialogOpen, setIsUpsertProfessionalDialogOpen] =
+    useState(false);
+
   const professionalName = professional.name
     .split(" ")
     .map((name) => name.charAt(0))
@@ -59,14 +63,26 @@ const ProfessionalCard = ({ professional }: ProfessionalCardProps) => {
       </CardContent>
       <Separator />
       <CardFooter>
-        <Dialog>
+        <Dialog
+          open={isUpsertProfessionalDialogOpen}
+          onOpenChange={setIsUpsertProfessionalDialogOpen}
+        >
           <DialogTrigger asChild>
             <Button className="w-full">
               <PencilIcon className="mr-1" />
               Ver Detalhes
             </Button>
           </DialogTrigger>
-          <UpsertProfessionalForm />
+          <UpsertProfessionalForm
+            professional={{
+              ...professional,
+              availableToTime: availability.to.format("HH:mm:ss"),
+              availableFromTime: availability.from.format("HH:mm:ss"),
+            }}
+            onSuccess={() => {
+              setIsUpsertProfessionalDialogOpen(false);
+            }}
+          />
         </Dialog>
       </CardFooter>
     </Card>
