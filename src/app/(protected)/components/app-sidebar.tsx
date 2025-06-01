@@ -46,8 +46,8 @@ const items = [
     icon: CalendarDays,
   },
   {
-    title: "Médicos",
-    url: "/doctors",
+    title: "Profissionais",
+    url: "/professionals",
     icon: Stethoscope,
   },
   {
@@ -109,7 +109,9 @@ export function AppSidebar() {
                     <AvatarFallback>F</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm">{session.data?.user?.clinic?.name}</p>
+                    <p className="text-sm">
+                      {session.data?.user?.clinic?.name}
+                    </p>
                     <p className="text-muted-foreground text-sm">
                       {session.data?.user.email}
                     </p>

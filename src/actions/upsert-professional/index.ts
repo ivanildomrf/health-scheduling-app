@@ -6,13 +6,14 @@ import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { upsertDoctorSchema } from "./schema";
+import { upsertProfessionalSchema } from "./schema";
 
 dayjs.extend(utc);
 
-export const upsertDoctor = actionClient
-  .schema(upsertDoctorSchema)
+export const upsertProfessional = actionClient
+  .schema(upsertProfessionalSchema)
   .action(async ({ parsedInput }) => {
     const availableFromTime = parsedInput.availableFromTime;
     const availableToTime = parsedInput.availableToTime;
@@ -68,6 +69,8 @@ export const upsertDoctor = actionClient
           availableToTime: availableToTimeUTC,
         },
       });
+
+    revalidatePath("/professionals");
 
     return {
       success: true,

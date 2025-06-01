@@ -7,22 +7,28 @@ import {
   PageHeaderDescription,
   PageHeaderTitle,
 } from "@/components/ui/page-container";
+import { db } from "@/db";
+import { professionalsTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import AddDoctorButton from "./components/add-doctor-button";
+import AddProfessionalButton from "./components/add-professional-button";
+import ProfessionalCard from "./components/professional-card";
 
-const DoctorsPage = async () => {
+const ProfessionalsPage = async () => {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
   if (!session?.user) {
     redirect("/authentication");
   }
-  console.log(session.user);
   if (!session.user.clinic || !session.user.clinic?.id) {
     redirect("/clinic-form");
   }
+  const professionals = await db.query.professionalsTable.findMany({
+    where: eq(professionalsTable.clinicId, session.user.clinic.id),
+  });
   return (
     <PageContainer>
       <PageHeader>
@@ -33,16 +39,21 @@ const DoctorsPage = async () => {
           </PageHeaderDescription>
         </PageHeaderContent>
         <PageHeaderActions>
-          <AddDoctorButton />
+          <AddProfessionalButton />
         </PageHeaderActions>
       </PageHeader>
       <PageContent>
-        <div>
-          <h1>Médicos</h1>
+        <div className="grid grid-cols-3 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {professionals.map((professional) => (
+            <ProfessionalCard
+              key={professional.id}
+              professional={professional}
+            />
+          ))}
         </div>
       </PageContent>
     </PageContainer>
   );
 };
 
-export default DoctorsPage;
+export default ProfessionalsPage;

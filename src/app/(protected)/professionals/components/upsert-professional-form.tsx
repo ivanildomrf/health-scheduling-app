@@ -1,4 +1,4 @@
-import { upsertDoctor } from "@/actions/upsert-doctor";
+import { upsertProfessional } from "@/actions/upsert-professional";
 import { Button } from "@/components/ui/button";
 import {
   DialogContent,
@@ -79,11 +79,11 @@ const formSchema = z
     },
   );
 
-interface UpsertDoctorFormProps {
+interface UpsertProfessionalFormProps {
   onSuccess?: () => void;
 }
 
-const UpsertDoctorForm = ({ onSuccess }: UpsertDoctorFormProps) => {
+const UpsertProfessionalForm = ({ onSuccess }: UpsertProfessionalFormProps) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -97,7 +97,7 @@ const UpsertDoctorForm = ({ onSuccess }: UpsertDoctorFormProps) => {
     },
   });
 
-  const upsertDoctorAction = useAction(upsertDoctor, {
+  const upsertProfessionalAction = useAction(upsertProfessional, {
     onSuccess: () => {
       toast.success("Médico cadastrado com sucesso");
       onSuccess?.();
@@ -108,7 +108,7 @@ const UpsertDoctorForm = ({ onSuccess }: UpsertDoctorFormProps) => {
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    upsertDoctorAction.execute({
+    upsertProfessionalAction.execute({
       ...values,
       appointmentPriceInCents: values.appointmentPrice * 100,
       availableFromWeekDay: parseInt(values.availableFromWeekDay),
@@ -387,10 +387,12 @@ const UpsertDoctorForm = ({ onSuccess }: UpsertDoctorFormProps) => {
           <DialogFooter>
             <Button
               type="submit"
-              disabled={upsertDoctorAction.isExecuting}
+              disabled={upsertProfessionalAction.isExecuting}
               className="w-full"
             >
-              {upsertDoctorAction.isExecuting ? "Cadastrando..." : "Cadastrar"}
+              {upsertProfessionalAction.isExecuting
+                ? "Cadastrando..."
+                : "Cadastrar"}
             </Button>
           </DialogFooter>
         </form>
@@ -399,4 +401,4 @@ const UpsertDoctorForm = ({ onSuccess }: UpsertDoctorFormProps) => {
   );
 };
 
-export default UpsertDoctorForm;
+export default UpsertProfessionalForm;
