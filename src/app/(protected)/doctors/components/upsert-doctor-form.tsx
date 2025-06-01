@@ -32,6 +32,7 @@ import { NumericFormat } from "react-number-format";
 import { toast } from "sonner";
 import z from "zod";
 import { medicalSpecialties } from "../constants";
+
 const formSchema = z
   .object({
     name: z.string().min(1, { message: "Nome é obrigatório" }),

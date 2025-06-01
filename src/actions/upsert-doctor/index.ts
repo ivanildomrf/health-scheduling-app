@@ -4,12 +4,33 @@ import { db } from "@/db";
 import { professionalsTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
 import { headers } from "next/headers";
 import { upsertDoctorSchema } from "./schema";
+
+dayjs.extend(utc);
 
 export const upsertDoctor = actionClient
   .schema(upsertDoctorSchema)
   .action(async ({ parsedInput }) => {
+    const availableFromTime = parsedInput.availableFromTime;
+    const availableToTime = parsedInput.availableToTime;
+
+    const availableFromTimeUTC = dayjs()
+      .set("hour", parseInt(availableFromTime.split(":")[0]))
+      .set("minute", parseInt(availableFromTime.split(":")[1]))
+      .set("second", parseInt(availableFromTime.split(":")[2]))
+      .utc()
+      .format("HH:mm:ss");
+
+    const availableToTimeUTC = dayjs()
+      .set("hour", parseInt(availableToTime.split(":")[0]))
+      .set("minute", parseInt(availableToTime.split(":")[1]))
+      .set("second", parseInt(availableToTime.split(":")[2]))
+      .utc()
+      .format("HH:mm:ss");
+
     const session = await auth.api.getSession({
       headers: await headers(),
     });
@@ -32,8 +53,8 @@ export const upsertDoctor = actionClient
         appointmentsPriceInCents: parsedInput.appointmentPriceInCents,
         availableFromWeekDay: parsedInput.availableFromWeekDay,
         availableToWeekDay: parsedInput.availableToWeekDay,
-        availableFromTime: parsedInput.availableFromTime,
-        availableToTime: parsedInput.availableToTime,
+        availableFromTime: availableFromTimeUTC,
+        availableToTime: availableToTimeUTC,
       })
       .onConflictDoUpdate({
         target: [professionalsTable.id],
@@ -43,8 +64,8 @@ export const upsertDoctor = actionClient
           appointmentsPriceInCents: parsedInput.appointmentPriceInCents,
           availableFromWeekDay: parsedInput.availableFromWeekDay,
           availableToWeekDay: parsedInput.availableToWeekDay,
-          availableFromTime: parsedInput.availableFromTime,
-          availableToTime: parsedInput.availableToTime,
+          availableFromTime: availableFromTimeUTC,
+          availableToTime: availableToTimeUTC,
         },
       });
 
