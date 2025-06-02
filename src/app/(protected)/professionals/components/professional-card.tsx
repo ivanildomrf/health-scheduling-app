@@ -103,6 +103,7 @@ const ProfessionalCard = ({ professional }: ProfessionalCardProps) => {
             </Button>
           </DialogTrigger>
           <UpsertProfessionalForm
+            isOpen={isUpsertProfessionalDialogOpen}
             professional={{
               ...professional,
               availableToTime: availability.to.format("HH:mm:ss"),

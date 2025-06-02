@@ -28,6 +28,7 @@ import {
 import { professionalsTable } from "@/db/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAction } from "next-safe-action/hooks";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { NumericFormat } from "react-number-format";
 import { toast } from "sonner";
@@ -81,11 +82,13 @@ const formSchema = z
   );
 
 interface UpsertProfessionalFormProps {
+  isOpen: boolean;
   professional?: typeof professionalsTable.$inferSelect;
   onSuccess?: () => void;
 }
 
 const UpsertProfessionalForm = ({
+  isOpen,
   professional,
   onSuccess,
 }: UpsertProfessionalFormProps) => {
@@ -115,6 +118,23 @@ const UpsertProfessionalForm = ({
       toast.error("Erro ao cadastrar médico");
     },
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        name: professional?.name ?? "",
+        specialty: professional?.speciality ?? "",
+        appointmentPrice: professional?.appointmentsPriceInCents
+          ? professional?.appointmentsPriceInCents / 100
+          : 0,
+        availableFromWeekDay:
+          professional?.availableFromWeekDay?.toString() ?? "1",
+        availableToWeekDay: professional?.availableToWeekDay?.toString() ?? "5",
+        availableFromTime: professional?.availableFromTime ?? "",
+        availableToTime: professional?.availableToTime ?? "",
+      });
+    }
+  }, [isOpen]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     upsertProfessionalAction.execute({

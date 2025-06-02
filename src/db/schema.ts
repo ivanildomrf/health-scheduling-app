@@ -151,6 +151,7 @@ export const patientsTable = pgTable("patients", {
       onDelete: "cascade",
     }),
   email: text("email").notNull().unique(),
+  phone: text("phone").notNull(),
   password: text("password").notNull(),
   sex: patientSexEnum("sex").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

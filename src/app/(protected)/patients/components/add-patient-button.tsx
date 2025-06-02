@@ -4,24 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import { useState } from "react";
-import UpsertProfessionalForm from "./upsert-professional-form";
+import UpsertPatientForm from "./upsert-patient-form";
 
-const AddProfessionalButton = () => {
+const AddPatientButton = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus /> Adicionar Profissional
+          <Plus /> Adicionar Paciente
         </Button>
       </DialogTrigger>
-      <UpsertProfessionalForm
-        isOpen={isOpen}
-        onSuccess={() => setIsOpen(false)}
-      />
+      <UpsertPatientForm isOpen={isOpen} onSuccess={() => setIsOpen(false)} />
     </Dialog>
   );
 };
 
-export default AddProfessionalButton;
+export default AddPatientButton;
