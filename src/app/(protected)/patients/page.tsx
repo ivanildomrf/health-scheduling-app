@@ -1,3 +1,4 @@
+import { DataTable } from "@/components/ui/data-table";
 import {
   PageContainer,
   PageContent,
@@ -14,9 +15,7 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import AddPatientButton from "./components/add-patient-button";
-import PatientCard from "./components/patient-card";
 import { patientTableColumns } from "./components/table-column";
-import { DataTable } from "@/components/ui/data-table";
 
 const PatientsPage = async () => {
   const session = await auth.api.getSession({
@@ -46,11 +45,6 @@ const PatientsPage = async () => {
       </PageHeader>
       <PageContent>
         <DataTable columns={patientTableColumns} data={patients} />
-        <div className="grid grid-cols-3 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {patients.map((patient) => (
-            <PatientCard key={patient.id} patient={patient} />
-          ))}
-        </div>
       </PageContent>
     </PageContainer>
   );
