@@ -68,13 +68,33 @@ export const appointmentTableColumns: ColumnDef<Appointment>[] = [
     header: "Status",
     cell: ({ row }) => {
       const status = row.original.status;
-      return status === "active" ? (
-        <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-green-600/20 ring-inset">
-          Confirmado
-        </span>
-      ) : (
-        <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-red-600/20 ring-inset">
-          Cancelado
+
+      const statusConfig = {
+        active: {
+          text: "Confirmado",
+          className: "bg-green-50 text-green-700 ring-green-600/20",
+        },
+        cancelled: {
+          text: "Cancelado",
+          className: "bg-red-50 text-red-700 ring-red-600/20",
+        },
+        expired: {
+          text: "Expirado",
+          className: "bg-yellow-50 text-yellow-700 ring-yellow-600/20",
+        },
+        completed: {
+          text: "Concluído",
+          className: "bg-blue-50 text-blue-700 ring-blue-600/20",
+        },
+      };
+
+      const config = statusConfig[status] || statusConfig.active;
+
+      return (
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset ${config.className}`}
+        >
+          {config.text}
         </span>
       );
     },

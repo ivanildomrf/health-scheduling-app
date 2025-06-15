@@ -7,6 +7,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { cancelAppointment } from "@/actions/cancel-appointment";
+import { completeAppointment } from "@/actions/complete-appointment";
+import { expireAppointment } from "@/actions/expire-appointment";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { appointmentsTable } from "@/db/schema";
-import { EditIcon, MoreVerticalIcon, XIcon } from "lucide-react";
+import { Check, Clock, EditIcon, MoreVerticalIcon, XIcon } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -54,9 +56,41 @@ export const AppointmentTableActions = ({
     },
   });
 
+  const completeAppointmentAction = useAction(completeAppointment, {
+    onSuccess: () => {
+      toast.success("Agendamento concluído com sucesso");
+    },
+    onError: (error) => {
+      toast.error("Erro ao concluir agendamento");
+    },
+  });
+
+  const expireAppointmentAction = useAction(expireAppointment, {
+    onSuccess: () => {
+      toast.success("Agendamento expirado com sucesso");
+    },
+    onError: (error) => {
+      toast.error("Erro ao expirar agendamento");
+    },
+  });
+
   const handleCancelAppointmentClick = () => {
     if (!appointment) return;
     cancelAppointmentAction.execute({
+      id: appointment.id,
+    });
+  };
+
+  const handleCompleteAppointmentClick = () => {
+    if (!appointment) return;
+    completeAppointmentAction.execute({
+      id: appointment.id,
+    });
+  };
+
+  const handleExpireAppointmentClick = () => {
+    if (!appointment) return;
+    expireAppointmentAction.execute({
       id: appointment.id,
     });
   };
@@ -82,6 +116,18 @@ export const AppointmentTableActions = ({
             <DropdownMenuItem onClick={() => setUpsertDialogIsOpen(true)}>
               <EditIcon />
               Editar
+            </DropdownMenuItem>
+          )}
+          {isActive && (
+            <DropdownMenuItem onClick={handleCompleteAppointmentClick}>
+              <Check />
+              Marcar como Concluído
+            </DropdownMenuItem>
+          )}
+          {isActive && (
+            <DropdownMenuItem onClick={handleExpireAppointmentClick}>
+              <Clock />
+              Marcar como Expirado
             </DropdownMenuItem>
           )}
           {isActive && (
@@ -119,7 +165,9 @@ export const AppointmentTableActions = ({
           {!isActive && (
             <DropdownMenuItem disabled>
               <span className="text-muted-foreground">
-                Agendamento cancelado
+                {appointment.status === "cancelled" && "Agendamento cancelado"}
+                {appointment.status === "completed" && "Agendamento concluído"}
+                {appointment.status === "expired" && "Agendamento expirado"}
               </span>
             </DropdownMenuItem>
           )}
