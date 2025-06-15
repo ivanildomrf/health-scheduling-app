@@ -24,6 +24,10 @@ export const completeAppointment = actionClient
       throw new Error("Não autorizado");
     }
 
+    if (!session?.user.clinic?.id) {
+      throw new Error("Clínica não encontrada");
+    }
+
     const appointment = await db.query.appointmentsTable.findFirst({
       where: eq(appointmentsTable.id, parsedInput.id),
     });
