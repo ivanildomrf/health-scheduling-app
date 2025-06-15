@@ -1,4 +1,3 @@
-import { DataTable } from "@/components/ui/data-table";
 import {
   PageContainer,
   PageContent,
@@ -15,11 +14,11 @@ import {
   professionalsTable,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { eq } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import AddAppointmentButton from "./components/add-appointment-button";
-import { appointmentTableColumns } from "./components/table-column";
+import { AppointmentsTable } from "./components/appointments-table";
 
 const AppointmentsPage = async () => {
   const session = await auth.api.getSession({
@@ -34,22 +33,46 @@ const AppointmentsPage = async () => {
     redirect("/clinic-form");
   }
 
-  // Buscar pacientes, profissionais e agendamentos da clínica
-  const [patients, professionals, appointments] = await Promise.all([
-    db.query.patientsTable.findMany({
-      where: eq(patientsTable.clinicId, session.user.clinic.id),
-    }),
-    db.query.professionalsTable.findMany({
-      where: eq(professionalsTable.clinicId, session.user.clinic.id),
-    }),
-    db.query.appointmentsTable.findMany({
-      where: eq(appointmentsTable.clinicId, session.user.clinic.id),
-      with: {
-        patient: true,
-        professional: true,
-      },
-    }),
-  ]);
+  const clinicId = session.user.clinic.id;
+
+  // Buscar dados iniciais para a primeira página
+  const [patients, professionals, appointments, totalCount] = await Promise.all(
+    [
+      db.query.patientsTable.findMany({
+        where: eq(patientsTable.clinicId, clinicId),
+      }),
+      db.query.professionalsTable.findMany({
+        where: eq(professionalsTable.clinicId, clinicId),
+      }),
+      db.query.appointmentsTable.findMany({
+        where: eq(appointmentsTable.clinicId, clinicId),
+        with: {
+          patient: true,
+          professional: true,
+        },
+        limit: 10,
+        offset: 0,
+        orderBy: [desc(appointmentsTable.date)],
+      }),
+      db
+        .select({ count: count() })
+        .from(appointmentsTable)
+        .where(eq(appointmentsTable.clinicId, clinicId))
+        .then((result) => result[0]?.count || 0),
+    ],
+  );
+
+  const initialData = {
+    appointments,
+    pagination: {
+      page: 1,
+      limit: 10,
+      totalCount,
+      totalPages: Math.ceil(totalCount / 10),
+      hasNextPage: totalCount > 10,
+      hasPreviousPage: false,
+    },
+  };
 
   return (
     <PageContainer>
@@ -68,7 +91,7 @@ const AppointmentsPage = async () => {
         </PageHeaderActions>
       </PageHeader>
       <PageContent>
-        <DataTable columns={appointmentTableColumns} data={appointments} />
+        <AppointmentsTable clinicId={clinicId} initialData={initialData} />
       </PageContent>
     </PageContainer>
   );
