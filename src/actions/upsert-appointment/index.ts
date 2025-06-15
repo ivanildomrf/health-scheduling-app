@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { upsertAppointmentSchema } from "./schema";
@@ -49,9 +49,26 @@ export const upsertAppointment = actionClient
     const appointmentDateTime = dayjs(parsedInput.date)
       .set("hour", parseInt(parsedInput.time.split(":")[0]))
       .set("minute", parseInt(parsedInput.time.split(":")[1]))
-      .set("second", 0)
+      .set("second", parseInt(parsedInput.time.split(":")[2] || "0"))
       .utc()
       .toDate();
+
+    // Verificar conflito de horário com outros agendamentos do mesmo profissional
+    // Excluir o próprio agendamento da verificação
+    const conflictingAppointment = await db.query.appointmentsTable.findFirst({
+      where: and(
+        eq(appointmentsTable.professionalId, parsedInput.professionalId),
+        eq(appointmentsTable.date, appointmentDateTime),
+        ne(appointmentsTable.id, parsedInput.id), // Excluir o próprio agendamento
+        ne(appointmentsTable.status, "cancelled"), // Excluir agendamentos cancelados
+      ),
+    });
+
+    if (conflictingAppointment) {
+      return new Error(
+        "Já existe um agendamento para este profissional neste horário",
+      );
+    }
 
     await db
       .update(appointmentsTable)
