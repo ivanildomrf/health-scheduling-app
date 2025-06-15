@@ -1,6 +1,7 @@
 "use client";
 
 import { createAppointment } from "@/actions/create-appointment";
+import { getProfessionalAvailability } from "@/actions/get-professional-availability";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -37,6 +38,8 @@ import { patientsTable, professionalsTable } from "@/db/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
 import { CalendarIcon } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
 import { useEffect, useState } from "react";
@@ -44,6 +47,8 @@ import { useForm } from "react-hook-form";
 import { NumericFormat } from "react-number-format";
 import { toast } from "sonner";
 import { z } from "zod";
+
+dayjs.extend(utc);
 
 const formSchema = z.object({
   patientId: z.string().min(1, { message: "Paciente é obrigatório" }),
@@ -62,6 +67,21 @@ interface CreateAppointmentFormProps {
   onSuccess?: () => void;
 }
 
+interface ProfessionalAvailability {
+  professional: {
+    id: string;
+    name: string;
+    availableFromWeekDay: number;
+    availableToWeekDay: number;
+    availableFromTime: string;
+    availableToTime: string;
+  };
+  availableSlots: {
+    date: string;
+    availableTimes: string[];
+  }[];
+}
+
 const CreateAppointmentForm = ({
   isOpen,
   patients,
@@ -71,6 +91,10 @@ const CreateAppointmentForm = ({
   const [selectedProfessional, setSelectedProfessional] = useState<
     typeof professionalsTable.$inferSelect | null
   >(null);
+  const [professionalAvailability, setProfessionalAvailability] =
+    useState<ProfessionalAvailability | null>(null);
+  const [availableDates, setAvailableDates] = useState<Date[]>([]);
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     shouldUnregister: true,
@@ -93,6 +117,62 @@ const CreateAppointmentForm = ({
     },
   });
 
+  const getProfessionalAvailabilityAction = useAction(
+    getProfessionalAvailability,
+    {
+      onSuccess: ({ data }) => {
+        if (data) {
+          console.log("=== FRONTEND DEBUG ===");
+          console.log("Professional availability data:", data);
+          console.log("Available slots count:", data.availableSlots.length);
+          console.log("First few slots:", data.availableSlots.slice(0, 5));
+
+          setProfessionalAvailability(data);
+
+          // Converter datas disponíveis para objetos Date
+          // Usar uma abordagem mais explícita para evitar problemas de timezone
+          const dates = data.availableSlots.map(
+            (slot: { date: string; availableTimes: string[] }) => {
+              // Criar data explicitamente no timezone local
+              const [year, month, day] = slot.date.split("-").map(Number);
+              return new Date(year, month - 1, day); // month é 0-indexed
+            },
+          );
+
+          console.log(
+            "Raw slot dates:",
+            data.availableSlots.slice(0, 5).map((slot) => slot.date),
+          );
+          console.log("Converted dates (first 5):", dates.slice(0, 5));
+          console.log(
+            "Days of week for first 5 dates:",
+            dates.slice(0, 5).map((d) => ({
+              date: d.toDateString(),
+              dayOfWeek: d.getDay(),
+              dayName: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][
+                d.getDay()
+              ],
+            })),
+          );
+
+          setAvailableDates(dates);
+
+          // Limpar seleção de data e horário quando trocar profissional
+          form.setValue("date", undefined as any);
+          form.setValue("time", "");
+          setAvailableTimes([]);
+        }
+      },
+      onError: (error) => {
+        console.error("Erro ao buscar disponibilidade:", error);
+        toast.error("Erro ao buscar disponibilidade do profissional");
+        setProfessionalAvailability(null);
+        setAvailableDates([]);
+        setAvailableTimes([]);
+      },
+    },
+  );
+
   // Reset form when dialog opens
   useEffect(() => {
     if (isOpen) {
@@ -103,6 +183,9 @@ const CreateAppointmentForm = ({
         time: "",
       });
       setSelectedProfessional(null);
+      setProfessionalAvailability(null);
+      setAvailableDates([]);
+      setAvailableTimes([]);
     }
   }, [isOpen, form]);
 
@@ -116,6 +199,26 @@ const CreateAppointmentForm = ({
     }
   }, [selectedProfessional, form]);
 
+  // Update available times when date changes
+  useEffect(() => {
+    const selectedDate = form.watch("date");
+    if (selectedDate && professionalAvailability) {
+      const dateStr = dayjs(selectedDate).format("YYYY-MM-DD");
+      const slot = professionalAvailability.availableSlots.find(
+        (slot) => slot.date === dateStr,
+      );
+
+      if (slot) {
+        setAvailableTimes(slot.availableTimes);
+      } else {
+        setAvailableTimes([]);
+      }
+
+      // Limpar seleção de horário quando trocar data
+      form.setValue("time", "");
+    }
+  }, [form.watch("date"), professionalAvailability]);
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     createAppointmentAction.execute({
       ...values,
@@ -126,6 +229,51 @@ const CreateAppointmentForm = ({
   const selectedPatient = form.watch("patientId");
   const selectedProfessionalId = form.watch("professionalId");
   const isFormReady = selectedPatient && selectedProfessionalId;
+
+  // Função para verificar se uma data está disponível
+  const isDateAvailable = (date: Date) => {
+    // Converter a data para string no formato YYYY-MM-DD
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const dateStr = `${year}-${month}-${day}`;
+
+    // Verificar se existe um slot para esta data
+    const hasSlot = professionalAvailability?.availableSlots.some(
+      (slot) => slot.date === dateStr,
+    );
+
+    console.log(
+      `🔍 Checking date availability: ${dateStr} (${["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][date.getDay()]}) = ${hasSlot}`,
+    );
+
+    return hasSlot || false;
+  };
+
+  // Função para formatar horário para exibição
+  const formatTimeForDisplay = (timeStr: string) => {
+    return timeStr.substring(0, 5); // Remove os segundos, mostra apenas HH:mm
+  };
+
+  // Função para organizar horários por período
+  const organizeTimesByPeriod = (times: string[]) => {
+    const morning = times.filter((time) => {
+      const hour = parseInt(time.split(":")[0]);
+      return hour >= 5 && hour < 12;
+    });
+
+    const afternoon = times.filter((time) => {
+      const hour = parseInt(time.split(":")[0]);
+      return hour >= 12 && hour < 18;
+    });
+
+    const evening = times.filter((time) => {
+      const hour = parseInt(time.split(":")[0]);
+      return hour >= 18;
+    });
+
+    return { morning, afternoon, evening };
+  };
 
   return (
     <DialogContent className="max-w-md">
@@ -175,6 +323,14 @@ const CreateAppointmentForm = ({
                       (p) => p.id === value,
                     );
                     setSelectedProfessional(professional || null);
+
+                    // Buscar disponibilidade do profissional
+                    if (professional) {
+                      console.log("Selected professional:", professional);
+                      getProfessionalAvailabilityAction.execute({
+                        professionalId: professional.id,
+                      });
+                    }
                   }}
                   value={field.value}
                 >
@@ -234,7 +390,11 @@ const CreateAppointmentForm = ({
                     <FormControl>
                       <Button
                         variant="outline"
-                        disabled={!isFormReady}
+                        disabled={
+                          !isFormReady ||
+                          getProfessionalAvailabilityAction.status ===
+                            "executing"
+                        }
                         data-empty={!field.value}
                         className="data-[empty=true]:text-muted-foreground w-full justify-start text-left font-normal"
                       >
@@ -242,7 +402,12 @@ const CreateAppointmentForm = ({
                         {field.value ? (
                           format(field.value, "PPP", { locale: ptBR })
                         ) : (
-                          <span>Selecione uma data</span>
+                          <span>
+                            {getProfessionalAvailabilityAction.status ===
+                            "executing"
+                              ? "Carregando disponibilidade..."
+                              : "Selecione uma data"}
+                          </span>
                         )}
                       </Button>
                     </FormControl>
@@ -253,7 +418,9 @@ const CreateAppointmentForm = ({
                       selected={field.value}
                       onSelect={field.onChange}
                       disabled={(date) =>
-                        date < new Date() || date < new Date("1900-01-01")
+                        date < new Date() ||
+                        date < new Date("1900-01-01") ||
+                        !isDateAvailable(date)
                       }
                       initialFocus
                       locale={ptBR}
@@ -268,72 +435,66 @@ const CreateAppointmentForm = ({
           <FormField
             control={form.control}
             name="time"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Horário</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value}
-                  disabled={!isFormReady}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um horário" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel>Manhã</SelectLabel>
-                      <SelectItem value="05:00:00">05:00</SelectItem>
-                      <SelectItem value="05:30:00">05:30</SelectItem>
-                      <SelectItem value="06:00:00">06:00</SelectItem>
-                      <SelectItem value="06:30:00">06:30</SelectItem>
-                      <SelectItem value="07:00:00">07:00</SelectItem>
-                      <SelectItem value="07:30:00">07:30</SelectItem>
-                      <SelectItem value="08:00:00">08:00</SelectItem>
-                      <SelectItem value="08:30:00">08:30</SelectItem>
-                      <SelectItem value="09:00:00">09:00</SelectItem>
-                      <SelectItem value="09:30:00">09:30</SelectItem>
-                      <SelectItem value="10:00:00">10:00</SelectItem>
-                      <SelectItem value="10:30:00">10:30</SelectItem>
-                      <SelectItem value="11:00:00">11:00</SelectItem>
-                      <SelectItem value="11:30:00">11:30</SelectItem>
-                      <SelectItem value="12:00:00">12:00</SelectItem>
-                    </SelectGroup>
-                    <SelectGroup>
-                      <SelectLabel>Tarde</SelectLabel>
-                      <SelectItem value="12:30:00">12:30</SelectItem>
-                      <SelectItem value="13:00:00">13:00</SelectItem>
-                      <SelectItem value="13:30:00">13:30</SelectItem>
-                      <SelectItem value="14:00:00">14:00</SelectItem>
-                      <SelectItem value="14:30:00">14:30</SelectItem>
-                      <SelectItem value="15:00:00">15:00</SelectItem>
-                      <SelectItem value="15:30:00">15:30</SelectItem>
-                      <SelectItem value="16:00:00">16:00</SelectItem>
-                      <SelectItem value="16:30:00">16:30</SelectItem>
-                      <SelectItem value="17:00:00">17:00</SelectItem>
-                      <SelectItem value="17:30:00">17:30</SelectItem>
-                      <SelectItem value="18:00:00">18:00</SelectItem>
-                    </SelectGroup>
-                    <SelectGroup>
-                      <SelectLabel>Noite</SelectLabel>
-                      <SelectItem value="18:30:00">18:30</SelectItem>
-                      <SelectItem value="19:00:00">19:00</SelectItem>
-                      <SelectItem value="19:30:00">19:30</SelectItem>
-                      <SelectItem value="20:00:00">20:00</SelectItem>
-                      <SelectItem value="20:30:00">20:30</SelectItem>
-                      <SelectItem value="21:00:00">21:00</SelectItem>
-                      <SelectItem value="21:30:00">21:30</SelectItem>
-                      <SelectItem value="22:00:00">22:00</SelectItem>
-                      <SelectItem value="22:30:00">22:30</SelectItem>
-                      <SelectItem value="23:00:00">23:00</SelectItem>
-                      <SelectItem value="23:30:00">23:30</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const { morning, afternoon, evening } =
+                organizeTimesByPeriod(availableTimes);
+
+              return (
+                <FormItem>
+                  <FormLabel>Horário</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={!isFormReady || availableTimes.length === 0}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            availableTimes.length === 0
+                              ? "Selecione uma data primeiro"
+                              : "Selecione um horário"
+                          }
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {morning.length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel>Manhã</SelectLabel>
+                          {morning.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {formatTimeForDisplay(time)}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
+                      {afternoon.length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel>Tarde</SelectLabel>
+                          {afternoon.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {formatTimeForDisplay(time)}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
+                      {evening.length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel>Noite</SelectLabel>
+                          {evening.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {formatTimeForDisplay(time)}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           <DialogFooter>
