@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createAppointmentSchema } from "./schema";
@@ -34,6 +35,22 @@ export const createAppointment = actionClient
       .set("second", 0)
       .utc()
       .toDate();
+
+    // Verificar se já existe um agendamento para o mesmo profissional no mesmo horário
+    const conflictingAppointment = await db.query.appointmentsTable.findFirst({
+      where: and(
+        eq(appointmentsTable.professionalId, parsedInput.professionalId),
+        eq(appointmentsTable.date, appointmentDateTime),
+        eq(appointmentsTable.clinicId, session.user.clinic.id),
+        ne(appointmentsTable.status, "cancelled"), // Excluir agendamentos cancelados
+      ),
+    });
+
+    if (conflictingAppointment) {
+      throw new Error(
+        "Já existe um agendamento para este profissional neste horário",
+      );
+    }
 
     await db.insert(appointmentsTable).values({
       patientId: parsedInput.patientId,
