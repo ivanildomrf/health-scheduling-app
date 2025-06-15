@@ -122,37 +122,15 @@ const CreateAppointmentForm = ({
     {
       onSuccess: ({ data }) => {
         if (data) {
-          console.log("=== FRONTEND DEBUG ===");
-          console.log("Professional availability data:", data);
-          console.log("Available slots count:", data.availableSlots.length);
-          console.log("First few slots:", data.availableSlots.slice(0, 5));
-
           setProfessionalAvailability(data);
 
           // Converter datas disponíveis para objetos Date
-          // Usar uma abordagem mais explícita para evitar problemas de timezone
           const dates = data.availableSlots.map(
             (slot: { date: string; availableTimes: string[] }) => {
               // Criar data explicitamente no timezone local
               const [year, month, day] = slot.date.split("-").map(Number);
               return new Date(year, month - 1, day); // month é 0-indexed
             },
-          );
-
-          console.log(
-            "Raw slot dates:",
-            data.availableSlots.slice(0, 5).map((slot) => slot.date),
-          );
-          console.log("Converted dates (first 5):", dates.slice(0, 5));
-          console.log(
-            "Days of week for first 5 dates:",
-            dates.slice(0, 5).map((d) => ({
-              date: d.toDateString(),
-              dayOfWeek: d.getDay(),
-              dayName: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][
-                d.getDay()
-              ],
-            })),
           );
 
           setAvailableDates(dates);
@@ -243,10 +221,6 @@ const CreateAppointmentForm = ({
       (slot) => slot.date === dateStr,
     );
 
-    console.log(
-      `🔍 Checking date availability: ${dateStr} (${["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][date.getDay()]}) = ${hasSlot}`,
-    );
-
     return hasSlot || false;
   };
 
@@ -326,7 +300,6 @@ const CreateAppointmentForm = ({
 
                     // Buscar disponibilidade do profissional
                     if (professional) {
-                      console.log("Selected professional:", professional);
                       getProfessionalAvailabilityAction.execute({
                         professionalId: professional.id,
                       });

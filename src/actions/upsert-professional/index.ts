@@ -18,7 +18,7 @@ export const upsertProfessional = actionClient
     const availableFromTime = parsedInput.availableFromTime;
     const availableToTime = parsedInput.availableToTime;
 
-    // Converter horário local para UTC (mantendo a lógica original que estava funcionando)
+    // Converter horário local para UTC
     const availableFromTimeUTC = dayjs()
       .set("hour", parseInt(availableFromTime.split(":")[0]))
       .set("minute", parseInt(availableFromTime.split(":")[1]))
@@ -32,13 +32,6 @@ export const upsertProfessional = actionClient
       .set("second", parseInt(availableToTime.split(":")[2]))
       .utc()
       .format("HH:mm:ss");
-
-    console.log("=== SAVE DEBUG ===");
-    console.log("Input from time (local):", availableFromTime);
-    console.log("Input to time (local):", availableToTime);
-    console.log("Converted from time (UTC):", availableFromTimeUTC);
-    console.log("Converted to time (UTC):", availableToTimeUTC);
-    console.log("=== END SAVE DEBUG ===");
 
     const session = await auth.api.getSession({
       headers: await headers(),

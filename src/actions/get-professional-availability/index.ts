@@ -44,15 +44,7 @@ export const getProfessionalAvailability = actionClient
       throw new Error("Profissional não encontrado");
     }
 
-    console.log("=== DEBUG START ===");
-    console.log("Professional:", professional.name);
-    console.log("Available from day:", professional.availableFromWeekDay);
-    console.log("Available to day:", professional.availableToWeekDay);
-    console.log("Available from time (UTC):", professional.availableFromTime);
-    console.log("Available to time (UTC):", professional.availableToTime);
-
-    // Converter horários de UTC para horário local (Brasil) - CORREÇÃO AQUI
-    // O problema estava na conversão: precisamos subtrair 3 horas do UTC para obter o horário local
+    // Converter horários de UTC para horário local (Brasil)
     const fromTimeUTC = dayjs.utc(
       `2000-01-01 ${professional.availableFromTime}`,
     );
@@ -61,12 +53,6 @@ export const getProfessionalAvailability = actionClient
     // Converter para timezone local (Brasil = UTC-3)
     const fromTimeLocal = fromTimeUTC.subtract(3, "hours");
     const toTimeLocal = toTimeUTC.subtract(3, "hours");
-
-    console.log(
-      "Available from time (Local):",
-      fromTimeLocal.format("HH:mm:ss"),
-    );
-    console.log("Available to time (Local):", toTimeLocal.format("HH:mm:ss"));
 
     // Definir período de consulta (próximos 60 dias)
     const startDate = dayjs().startOf("day");
@@ -103,12 +89,7 @@ export const getProfessionalAvailability = actionClient
       const currentDate = startDate.add(i, "days");
       const dayOfWeek = currentDate.day(); // 0 = Sunday, 1 = Monday, etc.
 
-      console.log(
-        `Checking day ${dayOfWeek} for date ${currentDate.format("YYYY-MM-DD")}`,
-      );
-
       // Verificar se o profissional atende neste dia da semana
-      // Lógica simplificada: verificar se o dia está no range
       let isAvailable = false;
 
       if (
@@ -118,25 +99,16 @@ export const getProfessionalAvailability = actionClient
         isAvailable =
           dayOfWeek >= professional.availableFromWeekDay &&
           dayOfWeek <= professional.availableToWeekDay;
-        console.log(
-          `Normal range: ${dayOfWeek} between ${professional.availableFromWeekDay} and ${professional.availableToWeekDay} = ${isAvailable}`,
-        );
       } else {
         // Caso que cruza a semana: ex: sexta (5) a segunda (1)
         isAvailable =
           dayOfWeek >= professional.availableFromWeekDay ||
           dayOfWeek <= professional.availableToWeekDay;
-        console.log(
-          `Cross week range: ${dayOfWeek} >= ${professional.availableFromWeekDay} OR <= ${professional.availableToWeekDay} = ${isAvailable}`,
-        );
       }
 
       if (!isAvailable) {
-        console.log(`Day ${dayOfWeek} is NOT available - skipping`);
         continue;
       }
-
-      console.log(`Day ${dayOfWeek} is AVAILABLE - generating times`);
 
       // Gerar horários disponíveis para este dia
       const dayAvailableTimes: string[] = [];
@@ -164,22 +136,8 @@ export const getProfessionalAvailability = actionClient
           date: dateStr,
           availableTimes: dayAvailableTimes,
         });
-        console.log(
-          `✅ ADDED SLOT: ${dateStr} (day ${dayOfWeek}) with ${dayAvailableTimes.length} times`,
-        );
-      } else {
-        console.log(
-          `❌ NO TIMES: ${dateStr} (day ${dayOfWeek}) - no available times`,
-        );
       }
     }
-
-    console.log("=== DEBUG END ===");
-    console.log("Total available slots:", availableSlots.length);
-    console.log(
-      "Sample slot dates:",
-      availableSlots.slice(0, 5).map((slot) => slot.date),
-    );
 
     return {
       professional: {
@@ -187,8 +145,8 @@ export const getProfessionalAvailability = actionClient
         name: professional.name,
         availableFromWeekDay: professional.availableFromWeekDay,
         availableToWeekDay: professional.availableToWeekDay,
-        availableFromTime: fromTimeLocal.format("HH:mm:ss"), // Retornar horário local
-        availableToTime: toTimeLocal.format("HH:mm:ss"), // Retornar horário local
+        availableFromTime: fromTimeLocal.format("HH:mm:ss"),
+        availableToTime: toTimeLocal.format("HH:mm:ss"),
       },
       availableSlots,
     };
