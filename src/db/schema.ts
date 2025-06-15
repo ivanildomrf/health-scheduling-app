@@ -171,6 +171,13 @@ export const patientsTableRelations = relations(
   }),
 );
 
+export const appointmentStatusEnum = pgEnum("appointment_status", [
+  "active",
+  "cancelled",
+  "expired",
+  "completed",
+]);
+
 export const appointmentsTable = pgTable("appointments", {
   id: uuid("id").defaultRandom().primaryKey(),
   date: timestamp("date").notNull(),
@@ -190,6 +197,7 @@ export const appointmentsTable = pgTable("appointments", {
       onDelete: "cascade",
     }),
   appointmentPriceInCents: integer("appointment_price_in_cents").notNull(),
+  status: appointmentStatusEnum("status").default("active").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

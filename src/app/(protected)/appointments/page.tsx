@@ -1,3 +1,4 @@
+import { DataTable } from "@/components/ui/data-table";
 import {
   PageContainer,
   PageContent,
@@ -8,12 +9,17 @@ import {
   PageHeaderTitle,
 } from "@/components/ui/page-container";
 import { db } from "@/db";
-import { patientsTable, professionalsTable } from "@/db/schema";
+import {
+  appointmentsTable,
+  patientsTable,
+  professionalsTable,
+} from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import AddAppointmentButton from "./components/add-appointment-button";
+import { appointmentTableColumns } from "./components/table-column";
 
 const AppointmentsPage = async () => {
   const session = await auth.api.getSession({
@@ -28,13 +34,20 @@ const AppointmentsPage = async () => {
     redirect("/clinic-form");
   }
 
-  // Buscar pacientes e profissionais da clínica
-  const [patients, professionals] = await Promise.all([
+  // Buscar pacientes, profissionais e agendamentos da clínica
+  const [patients, professionals, appointments] = await Promise.all([
     db.query.patientsTable.findMany({
       where: eq(patientsTable.clinicId, session.user.clinic.id),
     }),
     db.query.professionalsTable.findMany({
       where: eq(professionalsTable.clinicId, session.user.clinic.id),
+    }),
+    db.query.appointmentsTable.findMany({
+      where: eq(appointmentsTable.clinicId, session.user.clinic.id),
+      with: {
+        patient: true,
+        professional: true,
+      },
     }),
   ]);
 
@@ -55,9 +68,7 @@ const AppointmentsPage = async () => {
         </PageHeaderActions>
       </PageHeader>
       <PageContent>
-        <div className="flex h-full items-center justify-center">
-          Lista de agendamentos será implementada em breve.
-        </div>
+        <DataTable columns={appointmentTableColumns} data={appointments} />
       </PageContent>
     </PageContainer>
   );
