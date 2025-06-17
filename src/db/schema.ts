@@ -20,6 +20,13 @@ export const usersTable = pgTable("users", {
   updatedAt: timestamp("updated_at").notNull(),
 });
 
+export const usersTableRelations = relations(usersTable, ({ many }) => ({
+  notifications: many(notificationsTable),
+  usersToClinics: many(usersToClinicsTable),
+  sessions: many(sessionsTable),
+  accounts: many(accountsTable),
+}));
+
 export const sessionsTable = pgTable("sessions", {
   id: text("id").primaryKey(),
   expiresAt: timestamp("expires_at").notNull(),
@@ -32,6 +39,13 @@ export const sessionsTable = pgTable("sessions", {
     .notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
 });
+
+export const sessionsTableRelations = relations(sessionsTable, ({ one }) => ({
+  user: one(usersTable, {
+    fields: [sessionsTable.userId],
+    references: [usersTable.id],
+  }),
+}));
 
 export const accountsTable = pgTable("accounts", {
   id: text("id").primaryKey(),
@@ -50,6 +64,13 @@ export const accountsTable = pgTable("accounts", {
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at").notNull(),
 });
+
+export const accountsTableRelations = relations(accountsTable, ({ one }) => ({
+  user: one(usersTable, {
+    fields: [accountsTable.userId],
+    references: [usersTable.id],
+  }),
+}));
 
 export const verificationsTable = pgTable("verifications", {
   id: text("id").primaryKey(),
@@ -177,6 +198,46 @@ export const appointmentStatusEnum = pgEnum("appointment_status", [
   "expired",
   "completed",
 ]);
+
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "appointment_confirmed",
+  "appointment_cancelled",
+  "appointment_reminder_24h",
+  "appointment_reminder_2h",
+  "appointment_completed",
+  "appointment_expired",
+  "new_patient_registered",
+  "new_professional_added",
+  "clinic_updated",
+  "system_alert",
+]);
+
+export const notificationsTable = pgTable("notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  type: notificationTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  targetId: uuid("target_id"), // ID da consulta, paciente, etc.
+  targetType: text("target_type"), // "appointment", "patient", "professional", etc.
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const notificationsTableRelations = relations(
+  notificationsTable,
+  ({ one }) => ({
+    user: one(usersTable, {
+      fields: [notificationsTable.userId],
+      references: [usersTable.id],
+    }),
+  }),
+);
 
 export const appointmentsTable = pgTable("appointments", {
   id: uuid("id").defaultRandom().primaryKey(),

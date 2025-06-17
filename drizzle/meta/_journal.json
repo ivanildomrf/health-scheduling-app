@@ -15,6 +15,13 @@
       "when": 1749996780090,
       "tag": "0001_dizzy_gambit",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1750192938816,
+      "tag": "0002_powerful_calypso",
+      "breakpoints": true
     }
   ]
 }
