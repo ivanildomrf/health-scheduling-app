@@ -11,6 +11,7 @@ import type { Notification } from "@/lib/types/notifications";
 import {
   notificationColors,
   notificationIcons,
+  targetTypeLabels,
 } from "@/lib/types/notifications";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -42,6 +43,11 @@ export function NotificationItem({
 
   const icon = notificationIcons[notification.type] || "🔔";
   const colorClass = notificationColors[notification.type] || "text-gray-600";
+
+  // Traduzir o targetType para português
+  const targetTypeLabel = notification.targetType 
+    ? targetTypeLabels[notification.targetType as keyof typeof targetTypeLabels] || notification.targetType
+    : undefined;
 
   const handleMarkAsRead = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -154,11 +160,11 @@ export function NotificationItem({
         </div>
       </div>
 
-      {/* Tipo da notificação (badge opcional) */}
-      {!compact && notification.targetType && (
+      {/* Tipo da notificação (badge traduzido) */}
+      {!compact && targetTypeLabel && (
         <div className="absolute top-2 right-2">
           <Badge variant="outline" className="text-xs">
-            {notification.targetType}
+            {targetTypeLabel}
           </Badge>
         </div>
       )}

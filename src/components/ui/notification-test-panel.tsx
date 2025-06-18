@@ -16,165 +16,144 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { NotificationType } from "@/lib/types/notifications";
 import { useAction } from "next-safe-action/hooks";
 import { useState } from "react";
 import { toast } from "sonner";
 
 interface NotificationTestPanelProps {
   userId: string;
-  onNotificationsCreated?: () => void;
 }
 
-const notificationTypeLabels: Record<NotificationType, string> = {
-  appointment_confirmed: "📅 Consulta Confirmada",
-  appointment_cancelled: "❌ Consulta Cancelada",
-  appointment_reminder_24h: "⏰ Lembrete 24h",
-  appointment_reminder_2h: "⏰ Lembrete 2h",
-  appointment_completed: "✅ Consulta Concluída",
-  appointment_expired: "⏳ Consulta Expirada",
-  new_patient_registered: "👤 Novo Paciente",
-  new_professional_added: "👨‍⚕️ Novo Profissional",
-  clinic_updated: "🏥 Clínica Atualizada",
-  system_alert: "⚠️ Alerta do Sistema",
-};
+const notificationTypes = [
+  { value: "appointment_confirmed", label: "Consulta confirmada" },
+  { value: "appointment_cancelled", label: "Consulta cancelada" },
+  { value: "appointment_reminder_24h", label: "Lembrete 24h" },
+  { value: "appointment_reminder_2h", label: "Lembrete 2h" },
+  { value: "appointment_completed", label: "Consulta concluída" },
+  { value: "appointment_expired", label: "Consulta expirada" },
+  { value: "new_patient_registered", label: "Novo paciente" },
+  { value: "new_professional_added", label: "Novo profissional" },
+  { value: "clinic_updated", label: "Clínica atualizada" },
+  { value: "system_alert", label: "Alerta do sistema" },
+] as const;
 
-export function NotificationTestPanel({
-  userId,
-  onNotificationsCreated,
-}: NotificationTestPanelProps) {
-  const [selectedType, setSelectedType] =
-    useState<NotificationType>("system_alert");
+export function NotificationTestPanel({ userId }: NotificationTestPanelProps) {
+  const [selectedType, setSelectedType] = useState<string>("");
   const [count, setCount] = useState(1);
 
   const { execute: createTest, isExecuting } = useAction(
     createTestNotifications,
     {
       onSuccess: ({ data }) => {
-        if (data?.data) {
+        if (data?.data && "count" in data.data) {
           toast.success(
-            `${data.data.count} notificação(ões) de teste criada(s) com sucesso!`,
+            `${data.data.count} notificação(ões) criada(s) com sucesso!`,
           );
-          onNotificationsCreated?.();
+        } else {
+          toast.success("Notificações criadas com sucesso!");
         }
       },
       onError: ({ error }) => {
         toast.error("Erro ao criar notificações de teste");
-        console.error("Erro:", error);
+        console.error("Erro ao criar notificações de teste:", error);
       },
     },
   );
 
-  const handleCreateTest = () => {
+  const handleCreateSpecific = () => {
+    if (!selectedType) {
+      toast.error("Selecione um tipo de notificação");
+      return;
+    }
+
     createTest({
       userId,
-      type: selectedType,
+      type: selectedType as any,
       count,
     });
   };
 
-  const handleCreateAllTypes = () => {
-    const types = Object.keys(notificationTypeLabels) as NotificationType[];
+  const handleCreateOneOfEach = () => {
+    // Criar uma notificação de cada tipo
+    const types = notificationTypes.map((t) => t.value);
 
     types.forEach((type, index) => {
       setTimeout(() => {
         createTest({
           userId,
-          type,
+          type: type as any,
           count: 1,
         });
-      }, index * 500); // Espaçar as criações para evitar conflitos
+      }, index * 500); // Espaçar as criações
     });
   };
 
   return (
-    <Card className="border-2 border-dashed border-gray-300">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          🧪 Painel de Teste
+    <Card className="border-dashed border-orange-200 bg-orange-50/50">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium text-orange-700">
+          🧪 Painel de Teste - Notificações
         </CardTitle>
-        <CardDescription>
-          Use este painel para criar notificações de teste e verificar se o
-          sistema está funcionando corretamente.
+        <CardDescription className="text-xs text-orange-600">
+          Apenas visível em ambiente de desenvolvimento
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Tipo de Notificação</label>
-            <Select
-              value={selectedType}
-              onValueChange={(value) =>
-                setSelectedType(value as NotificationType)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(notificationTypeLabels).map(([type, label]) => (
-                  <SelectItem key={type} value={type}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {/* Tipo de notificação */}
+          <Select value={selectedType} onValueChange={setSelectedType}>
+            <SelectTrigger className="text-sm">
+              <SelectValue placeholder="Tipo de notificação" />
+            </SelectTrigger>
+            <SelectContent>
+              {notificationTypes.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Quantidade</label>
-            <Select
-              value={count.toString()}
-              onValueChange={(value) => setCount(parseInt(value))}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[1, 2, 3, 5, 10].map((num) => (
-                  <SelectItem key={num} value={num.toString()}>
-                    {num} notificação(ões)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Ações</label>
-            <div className="flex gap-2">
-              <Button
-                onClick={handleCreateTest}
-                disabled={isExecuting}
-                size="sm"
-                className="flex-1"
-              >
-                {isExecuting ? "Criando..." : "Criar Teste"}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t pt-4">
-          <Button
-            onClick={handleCreateAllTypes}
-            disabled={isExecuting}
-            variant="outline"
-            className="w-full"
+          {/* Quantidade */}
+          <Select
+            value={count.toString()}
+            onValueChange={(value) => setCount(parseInt(value))}
           >
-            🎯 Criar uma de cada tipo (10 notificações)
+            <SelectTrigger className="text-sm">
+              <SelectValue placeholder="Quantidade" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
+                <SelectItem key={num} value={num.toString()}>
+                  {num} notificação{num > 1 ? "ões" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Botão de criar específico */}
+          <Button
+            onClick={handleCreateSpecific}
+            disabled={isExecuting || !selectedType}
+            size="sm"
+            variant="outline"
+            className="text-sm"
+          >
+            {isExecuting ? "Criando..." : "Criar"}
           </Button>
         </div>
 
-        <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-500">
-          <p>
-            <strong>💡 Dica:</strong> Use este painel apenas em ambiente de
-            desenvolvimento/teste.
-          </p>
-          <p>
-            As notificações criadas aqui são apenas para demonstração e teste do
-            sistema.
-          </p>
+        {/* Botão de criar uma de cada */}
+        <div className="flex justify-center border-t border-orange-200 pt-2">
+          <Button
+            onClick={handleCreateOneOfEach}
+            disabled={isExecuting}
+            size="sm"
+            variant="outline"
+            className="border-orange-300 text-sm text-orange-700 hover:bg-orange-100"
+          >
+            {isExecuting ? "Criando..." : "Criar uma de cada tipo"}
+          </Button>
         </div>
       </CardContent>
     </Card>

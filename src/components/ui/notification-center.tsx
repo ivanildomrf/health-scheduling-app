@@ -1,7 +1,10 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -14,9 +17,21 @@ import { useNotifications } from "@/hooks/use-notifications";
 import type { NotificationType } from "@/lib/types/notifications";
 import { cn } from "@/lib/utils";
 import { Bell, CheckCheck, RefreshCw, Search } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { NotificationItem } from "./notification-item";
-import { NotificationTestPanel } from "./notification-test-panel";
+
+// Dynamic import para evitar hidratação server-side
+const DynamicNotificationTestPanel = dynamic(
+  () =>
+    import("./notification-test-panel").then(
+      (mod) => mod.NotificationTestPanel,
+    ),
+  {
+    ssr: false,
+    loading: () => null,
+  },
+);
 
 interface NotificationCenterProps {
   userId: string;
@@ -42,7 +57,7 @@ export function NotificationCenter({
     markAllAsRead,
     deleteNotification,
     totalCount,
-  } = useNotifications({ userId });
+  } = useNotifications({ userId, refreshInterval: 20000 });
 
   // Filtrar notificações
   const filteredNotifications = notifications.filter((notification) => {
@@ -218,62 +233,45 @@ export function NotificationCenter({
             </TabsList>
           </div>
 
-          <div className="p-6">
-            <TabsContent value="all" className="mt-0 space-y-6">
-              {/* Painel de Teste - Apenas em desenvolvimento */}
-              {process.env.NODE_ENV === "development" && (
-                <NotificationTestPanel
-                  userId={userId}
-                  onNotificationsCreated={refresh}
-                />
-              )}
-              <NotificationList
-                notifications={filteredNotifications}
-                onMarkAsRead={markAsRead}
-                onDelete={deleteNotification}
-                isLoading={isLoading}
-              />
-            </TabsContent>
+          <TabsContent value="all" className="m-0">
+            <NotificationList
+              notifications={filteredNotifications}
+              onMarkAsRead={markAsRead}
+              onDelete={deleteNotification}
+              isLoading={isLoading}
+            />
+          </TabsContent>
 
-            <TabsContent value="unread" className="mt-0 space-y-6">
-              {/* Painel de Teste - Apenas em desenvolvimento */}
-              {process.env.NODE_ENV === "development" && (
-                <NotificationTestPanel
-                  userId={userId}
-                  onNotificationsCreated={refresh}
-                />
-              )}
-              <NotificationList
-                notifications={filteredNotifications}
-                onMarkAsRead={markAsRead}
-                onDelete={deleteNotification}
-                isLoading={isLoading}
-              />
-            </TabsContent>
+          <TabsContent value="unread" className="m-0">
+            <NotificationList
+              notifications={filteredNotifications}
+              onMarkAsRead={markAsRead}
+              onDelete={deleteNotification}
+              isLoading={isLoading}
+            />
+          </TabsContent>
 
-            <TabsContent value="read" className="mt-0 space-y-6">
-              {/* Painel de Teste - Apenas em desenvolvimento */}
-              {process.env.NODE_ENV === "development" && (
-                <NotificationTestPanel
-                  userId={userId}
-                  onNotificationsCreated={refresh}
-                />
-              )}
-              <NotificationList
-                notifications={filteredNotifications}
-                onMarkAsRead={markAsRead}
-                onDelete={deleteNotification}
-                isLoading={isLoading}
-              />
-            </TabsContent>
-          </div>
+          <TabsContent value="read" className="m-0">
+            <NotificationList
+              notifications={filteredNotifications}
+              onMarkAsRead={markAsRead}
+              onDelete={deleteNotification}
+              isLoading={isLoading}
+            />
+          </TabsContent>
         </Tabs>
+
+        {/* Painel de teste apenas em desenvolvimento */}
+        {process.env.NODE_ENV === "development" && (
+          <div className="border-t px-6 py-4">
+            <DynamicNotificationTestPanel userId={userId} />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-// Componente auxiliar para lista de notificações
 interface NotificationListProps {
   notifications: any[];
   onMarkAsRead: (id: string) => void;
@@ -287,39 +285,45 @@ function NotificationList({
   onDelete,
   isLoading,
 }: NotificationListProps) {
-  if (isLoading && notifications.length === 0) {
+  if (isLoading) {
     return (
-      <div className="py-12 text-center">
-        <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />
-        <p className="text-gray-600">Carregando notificações...</p>
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+          <p className="text-muted-foreground">Carregando notificações...</p>
+        </div>
       </div>
     );
   }
 
   if (notifications.length === 0) {
     return (
-      <div className="py-12 text-center">
-        <Bell className="mx-auto mb-4 h-16 w-16 text-gray-300" />
-        <h3 className="mb-2 text-lg font-semibold text-gray-900">
-          Nenhuma notificação encontrada
-        </h3>
-        <p className="text-gray-600">
-          Tente ajustar os filtros ou buscar por outros termos.
-        </p>
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <Bell className="text-muted-foreground/50 mx-auto mb-4 h-12 w-12" />
+          <h3 className="text-muted-foreground mb-2 text-lg font-medium">
+            Nenhuma notificação encontrada
+          </h3>
+          <p className="text-muted-foreground text-sm">
+            Tente ajustar os filtros ou aguarde por novas notificações.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {notifications.map((notification) => (
-        <NotificationItem
-          key={notification.id}
-          notification={notification}
-          onMarkAsRead={onMarkAsRead}
-          onDelete={onDelete}
-        />
-      ))}
-    </div>
+    <ScrollArea className="h-[600px]">
+      <div className="space-y-3 px-6 py-4">
+        {notifications.map((notification) => (
+          <NotificationItem
+            key={notification.id}
+            notification={notification}
+            onMarkAsRead={onMarkAsRead}
+            onDelete={onDelete}
+          />
+        ))}
+      </div>
+    </ScrollArea>
   );
 }

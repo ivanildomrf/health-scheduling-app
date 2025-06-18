@@ -12,12 +12,14 @@ interface UseNotificationsProps {
   userId: string;
   autoRefresh?: boolean;
   refreshInterval?: number;
+  onlyCounterRefresh?: boolean;
 }
 
 export function useNotifications({
   userId,
   autoRefresh = true,
-  refreshInterval = 30000,
+  refreshInterval = 10000,
+  onlyCounterRefresh = false,
 }: UseNotificationsProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -32,7 +34,7 @@ export function useNotifications({
       },
       onError: ({ error }) => {
         toast.error("Erro ao carregar notificações");
-        console.error("Erro ao carregar notificações:", error);
+        console.error("❌ Erro ao carregar notificações:", error);
       },
     });
 
@@ -45,7 +47,7 @@ export function useNotifications({
         }
       },
       onError: ({ error }) => {
-        console.error("Erro ao carregar contador:", error);
+        console.error("❌ Erro ao carregar contador:", error);
       },
     },
   );
@@ -55,7 +57,6 @@ export function useNotifications({
     {
       onSuccess: ({ data }) => {
         if (data?.data) {
-          // Atualizar notificação local
           setNotifications((prev) =>
             prev.map((notif) =>
               notif.id === data.data.id ? { ...notif, isRead: true } : notif,
@@ -67,7 +68,7 @@ export function useNotifications({
       },
       onError: ({ error }) => {
         toast.error("Erro ao marcar notificação como lida");
-        console.error("Erro ao marcar como lida:", error);
+        console.error("❌ Erro ao marcar como lida:", error);
       },
     },
   );
@@ -77,7 +78,6 @@ export function useNotifications({
     {
       onSuccess: ({ data }) => {
         if (data?.data) {
-          // Atualizar todas as notificações locais
           setNotifications((prev) =>
             prev.map((notif) => ({ ...notif, isRead: true })),
           );
@@ -87,7 +87,7 @@ export function useNotifications({
       },
       onError: ({ error }) => {
         toast.error("Erro ao marcar todas as notificações como lidas");
-        console.error("Erro ao marcar todas como lidas:", error);
+        console.error("❌ Erro ao marcar todas como lidas:", error);
       },
     },
   );
@@ -97,7 +97,6 @@ export function useNotifications({
     {
       onSuccess: ({ data }) => {
         if (data?.data) {
-          // Remover notificação local
           setNotifications((prev) =>
             prev.filter((notif) => notif.id !== data.data.id),
           );
@@ -109,16 +108,26 @@ export function useNotifications({
       },
       onError: ({ error }) => {
         toast.error("Erro ao remover notificação");
-        console.error("Erro ao remover notificação:", error);
+        console.error("❌ Erro ao remover notificação:", error);
       },
     },
   );
 
-  // Funções utilitárias
+  // Função de refresh
   const refresh = useCallback(() => {
-    fetchNotifications({ userId, limit: 20 });
-    fetchUnreadCount({ userId });
-  }, [userId, fetchNotifications, fetchUnreadCount]);
+    if (!userId) {
+      return;
+    }
+
+    if (onlyCounterRefresh) {
+      // Apenas atualizar contador
+      fetchUnreadCount({ userId });
+    } else {
+      // Atualizar notificações e contador
+      fetchNotifications({ userId, limit: 20 });
+      fetchUnreadCount({ userId });
+    }
+  }, [userId, fetchNotifications, fetchUnreadCount, onlyCounterRefresh]);
 
   const markAsReadHandler = useCallback(
     (notificationId: string) => {
@@ -138,52 +147,65 @@ export function useNotifications({
     [removeNotification, userId],
   );
 
-  // Buscar notificações inicial
+  const resetState = useCallback(() => {
+    setNotifications([]);
+    setUnreadCount(0);
+    refresh();
+  }, [refresh]);
+
+  // Carregamento inicial
   useEffect(() => {
     if (userId) {
-      refresh();
+      // Sempre carregar notificações na inicialização (mesmo com onlyCounterRefresh)
+      fetchNotifications({ userId, limit: 20 });
+      // Sempre carregar contador
+      fetchUnreadCount({ userId });
     }
-  }, [userId, refresh]);
+  }, [userId, fetchNotifications, fetchUnreadCount]);
 
-  // Auto refresh
+  // Auto-refresh
   useEffect(() => {
-    if (!autoRefresh || !userId) return;
+    if (!autoRefresh || !userId || refreshInterval <= 0) {
+      return;
+    }
 
     const interval = setInterval(() => {
-      fetchNotifications({ userId, limit: 20 });
-      fetchUnreadCount({ userId });
+      if (onlyCounterRefresh) {
+        // Apenas atualizar contador
+        fetchUnreadCount({ userId });
+      } else {
+        // Atualizar notificações completas + contador
+        fetchNotifications({ userId, limit: 20 });
+        fetchUnreadCount({ userId });
+      }
     }, refreshInterval);
 
     return () => clearInterval(interval);
   }, [
     autoRefresh,
-    refreshInterval,
     userId,
-    fetchNotifications,
+    refreshInterval,
     fetchUnreadCount,
+    fetchNotifications,
+    onlyCounterRefresh,
   ]);
 
-  // Estados de loading
   const isLoading = isLoadingNotifications || isLoadingCount;
   const isUpdating = isMarkingRead || isMarkingAllRead || isDeleting;
+  const hasUnread = unreadCount > 0;
+  const totalCount = notifications.length;
 
   return {
-    // Data
     notifications,
     unreadCount,
-
-    // Loading states
     isLoading,
     isUpdating,
-
-    // Actions
+    hasUnread,
     refresh,
     markAsRead: markAsReadHandler,
     markAllAsRead: markAllAsReadHandler,
     deleteNotification: deleteHandler,
-
-    // Utils
-    hasUnread: unreadCount > 0,
-    totalCount: notifications.length,
+    resetState,
+    totalCount,
   };
 }

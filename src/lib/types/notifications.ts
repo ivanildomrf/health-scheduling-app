@@ -142,3 +142,12 @@ export const notificationColors: Record<NotificationType, string> = {
   clinic_updated: "text-indigo-600",
   system_alert: "text-yellow-600",
 };
+
+// Tradução das tags de targetType para português
+export const targetTypeLabels: Record<NotificationTargetType, string> = {
+  appointment: "consulta",
+  patient: "paciente",
+  professional: "profissional",
+  clinic: "clínica",
+  system: "sistema",
+};
