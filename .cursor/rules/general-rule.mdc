@@ -10,7 +10,7 @@ Tecnologias e ferramentas utilizadas:
 - Next.js 15 (App Router)
 - TypeScript
 - Tailwind CSS
-- shadcn/ui
+- shadcn/ui na versão 2.5.0
 - React Hook Form para formulários
 - Zod para validações
 - BetterAuth para autenticação

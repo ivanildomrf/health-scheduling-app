@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Bell,
   CalendarDays,
   Hospital,
   LayoutDashboard,
@@ -56,9 +57,14 @@ const items = [
     icon: UserRound,
   },
   {
-    title: "Clinicas",
+    title: "Clínicas",
     url: "/clinics",
     icon: Hospital,
+  },
+  {
+    title: "Notificações",
+    url: "/notifications",
+    icon: Bell,
   },
 ];
 

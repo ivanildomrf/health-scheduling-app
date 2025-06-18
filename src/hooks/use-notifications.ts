@@ -26,8 +26,8 @@ export function useNotifications({
   const { execute: fetchNotifications, isExecuting: isLoadingNotifications } =
     useAction(getNotifications, {
       onSuccess: ({ data }) => {
-        if (data) {
-          setNotifications(data);
+        if (data?.data) {
+          setNotifications(data.data);
         }
       },
       onError: ({ error }) => {
@@ -40,8 +40,8 @@ export function useNotifications({
     getUnreadNotificationsCount,
     {
       onSuccess: ({ data }) => {
-        if (data) {
-          setUnreadCount(data.count);
+        if (data?.data) {
+          setUnreadCount(data.data.count);
         }
       },
       onError: ({ error }) => {
@@ -54,11 +54,11 @@ export function useNotifications({
     markNotificationRead,
     {
       onSuccess: ({ data }) => {
-        if (data) {
+        if (data?.data) {
           // Atualizar notificação local
           setNotifications((prev) =>
             prev.map((notif) =>
-              notif.id === data.id ? { ...notif, isRead: true } : notif,
+              notif.id === data.data.id ? { ...notif, isRead: true } : notif,
             ),
           );
           setUnreadCount((prev) => Math.max(0, prev - 1));
@@ -76,13 +76,13 @@ export function useNotifications({
     markAllNotificationsRead,
     {
       onSuccess: ({ data }) => {
-        if (data) {
+        if (data?.data) {
           // Atualizar todas as notificações locais
           setNotifications((prev) =>
             prev.map((notif) => ({ ...notif, isRead: true })),
           );
           setUnreadCount(0);
-          toast.success(`${data.count} notificações marcadas como lidas`);
+          toast.success(`${data.data.count} notificações marcadas como lidas`);
         }
       },
       onError: ({ error }) => {
@@ -96,12 +96,12 @@ export function useNotifications({
     deleteNotification,
     {
       onSuccess: ({ data }) => {
-        if (data) {
+        if (data?.data) {
           // Remover notificação local
           setNotifications((prev) =>
-            prev.filter((notif) => notif.id !== data.id),
+            prev.filter((notif) => notif.id !== data.data.id),
           );
-          if (!data.isRead) {
+          if (!data.data.isRead) {
             setUnreadCount((prev) => Math.max(0, prev - 1));
           }
           toast.success("Notificação removida");
@@ -150,11 +150,18 @@ export function useNotifications({
     if (!autoRefresh || !userId) return;
 
     const interval = setInterval(() => {
+      fetchNotifications({ userId, limit: 20 });
       fetchUnreadCount({ userId });
     }, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [autoRefresh, refreshInterval, userId, fetchUnreadCount]);
+  }, [
+    autoRefresh,
+    refreshInterval,
+    userId,
+    fetchNotifications,
+    fetchUnreadCount,
+  ]);
 
   // Estados de loading
   const isLoading = isLoadingNotifications || isLoadingCount;

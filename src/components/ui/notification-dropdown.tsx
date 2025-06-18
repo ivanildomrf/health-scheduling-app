@@ -3,13 +3,22 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useNotifications } from "@/hooks/use-notifications";
 import { cn } from "@/lib/utils";
-import { Bell, CheckCheck, Settings } from "lucide-react";
+import {
+  Bell,
+  CheckCheck,
+  ExternalLink,
+  RefreshCw,
+  Settings,
+} from "lucide-react";
+import Link from "next/link";
 import { NotificationItem } from "./notification-item";
 
 interface NotificationDropdownProps {
@@ -94,15 +103,50 @@ export function NotificationDropdown({
 
             {/* Actions do header */}
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={refresh}
-                disabled={isLoading}
-                className="h-8 w-8 p-0"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
+              {/* Menu de opções */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem
+                    onClick={refresh}
+                    disabled={isLoading}
+                    className="cursor-pointer"
+                  >
+                    <RefreshCw
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        isLoading && "animate-spin",
+                      )}
+                    />
+                    Atualizar notificações
+                  </DropdownMenuItem>
+
+                  {hasUnread && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={markAllAsRead}
+                        disabled={isUpdating}
+                        className="cursor-pointer"
+                      >
+                        <CheckCheck className="mr-2 h-4 w-4" />
+                        Marcar todas como lidas
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+
+                  <DropdownMenuItem asChild>
+                    <Link href="/notifications" className="cursor-pointer">
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Abrir página completa
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {hasUnread && (
                 <Button
@@ -111,6 +155,7 @@ export function NotificationDropdown({
                   onClick={markAllAsRead}
                   disabled={isUpdating}
                   className="h-8 w-8 p-0"
+                  title="Marcar todas como lidas"
                 >
                   <CheckCheck className="h-4 w-4" />
                 </Button>
@@ -163,12 +208,9 @@ export function NotificationDropdown({
               <Button
                 variant="ghost"
                 className="w-full justify-center text-sm"
-                onClick={() => {
-                  // Aqui você pode navegar para uma página completa de notificações
-                  console.log("Ver todas as notificações");
-                }}
+                asChild
               >
-                Ver todas as notificações
+                <Link href="/notifications">Ver todas as notificações</Link>
               </Button>
             </div>
           </>
