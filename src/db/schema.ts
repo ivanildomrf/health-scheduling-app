@@ -282,3 +282,103 @@ export const appointmentsTableRelations = relations(
     }),
   }),
 );
+
+// Enum para tipos de templates de email
+export const emailTemplateTypeEnum = pgEnum("email_template_type", [
+  "appointment_reminder_24h",
+  "appointment_reminder_2h",
+  "appointment_confirmed",
+  "appointment_cancelled",
+  "appointment_completed",
+  "welcome_patient",
+  "welcome_professional",
+  "password_reset",
+  "custom",
+]);
+
+// Tabela para templates de email personalizáveis
+export const emailTemplatesTable = pgTable("email_templates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clinicId: uuid("clinic_id")
+    .notNull()
+    .references(() => clinicsTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // Nome do template
+  type: emailTemplateTypeEnum("type").notNull(),
+  subject: text("subject").notNull(), // Assunto do email
+  htmlContent: text("html_content").notNull(), // Conteúdo HTML
+  textContent: text("text_content"), // Versão texto
+  variables: text("variables"), // JSON com variáveis disponíveis
+  isActive: boolean("is_active").default(true),
+  isDefault: boolean("is_default").default(false), // Template padrão do sistema
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Tabela para configurações de email da clínica
+export const clinicEmailSettingsTable = pgTable("clinic_email_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clinicId: uuid("clinic_id")
+    .notNull()
+    .references(() => clinicsTable.id, { onDelete: "cascade" }),
+  senderName: text("sender_name").notNull(), // Nome do remetente
+  senderEmail: text("sender_email").notNull(), // Email do remetente
+  logoUrl: text("logo_url"), // URL da logo
+  primaryColor: text("primary_color").default("#3B82F6"), // Cor primária
+  secondaryColor: text("secondary_color").default("#1F2937"), // Cor secundária
+  footerText: text("footer_text"), // Texto do rodapé
+  clinicAddress: text("clinic_address"), // Endereço da clínica
+  clinicPhone: text("clinic_phone"), // Telefone da clínica
+  clinicWebsite: text("clinic_website"), // Site da clínica
+  emailSignature: text("email_signature"), // Assinatura do email
+  enableReminders: boolean("enable_reminders").default(true),
+  reminder24hEnabled: boolean("reminder_24h_enabled").default(true),
+  reminder2hEnabled: boolean("reminder_2h_enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Tabela para anexos de email
+export const emailAttachmentsTable = pgTable("email_attachments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  templateId: uuid("template_id")
+    .notNull()
+    .references(() => emailTemplatesTable.id, { onDelete: "cascade" }),
+  fileName: text("file_name").notNull(),
+  fileUrl: text("file_url").notNull(), // URL do arquivo no storage
+  fileSize: integer("file_size"), // Tamanho em bytes
+  mimeType: text("mime_type"), // Tipo MIME
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Relations para email templates
+export const emailTemplatesRelations = relations(
+  emailTemplatesTable,
+  ({ one, many }) => ({
+    clinic: one(clinicsTable, {
+      fields: [emailTemplatesTable.clinicId],
+      references: [clinicsTable.id],
+    }),
+    attachments: many(emailAttachmentsTable),
+  }),
+);
+
+export const clinicEmailSettingsRelations = relations(
+  clinicEmailSettingsTable,
+  ({ one }) => ({
+    clinic: one(clinicsTable, {
+      fields: [clinicEmailSettingsTable.clinicId],
+      references: [clinicsTable.id],
+    }),
+  }),
+);
+
+export const emailAttachmentsRelations = relations(
+  emailAttachmentsTable,
+  ({ one }) => ({
+    template: one(emailTemplatesTable, {
+      fields: [emailAttachmentsTable.templateId],
+      references: [emailTemplatesTable.id],
+    }),
+  }),
+);

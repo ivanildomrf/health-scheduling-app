@@ -6,6 +6,7 @@ import {
   Hospital,
   LayoutDashboard,
   LogOut,
+  Mail,
   Stethoscope,
   UserRound,
 } from "lucide-react";
@@ -62,6 +63,11 @@ const items = [
     icon: Hospital,
   },
   {
+    title: "Templates de Email",
+    url: "/email-templates",
+    icon: Mail,
+  },
+  {
     title: "Notificações",
     url: "/notifications",
     icon: Bell,
@@ -93,7 +99,14 @@ export function AppSidebar() {
             <SidebarMenu>
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={
+                      pathname === item.url ||
+                      (item.url === "/email-templates" &&
+                        pathname.startsWith("/email"))
+                    }
+                  >
                     <Link href={item.url}>
                       <item.icon />
                       <span>{item.title}</span>

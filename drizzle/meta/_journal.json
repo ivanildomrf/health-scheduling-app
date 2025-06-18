@@ -22,6 +22,13 @@
       "when": 1750192938816,
       "tag": "0002_powerful_calypso",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1750211834137,
+      "tag": "0003_rapid_true_believers",
+      "breakpoints": true
     }
   ]
 }
