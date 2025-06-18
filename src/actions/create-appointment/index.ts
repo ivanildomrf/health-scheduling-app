@@ -1,7 +1,12 @@
 "use server";
 
 import { db } from "@/db";
-import { appointmentsTable } from "@/db/schema";
+import {
+  appointmentsTable,
+  patientsTable,
+  professionalsTable,
+} from "@/db/schema";
+import { createAppointmentConfirmedNotification } from "@/helpers/notifications";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
 import dayjs from "dayjs";
@@ -52,14 +57,41 @@ export const createAppointment = actionClient
       );
     }
 
-    await db.insert(appointmentsTable).values({
-      patientId: parsedInput.patientId,
-      professionalId: parsedInput.professionalId,
-      clinicId: session.user.clinic.id,
-      date: appointmentDateTime,
-      appointmentPriceInCents: parsedInput.appointmentPriceInCents,
-      status: "active",
+    const [newAppointment] = await db
+      .insert(appointmentsTable)
+      .values({
+        patientId: parsedInput.patientId,
+        professionalId: parsedInput.professionalId,
+        clinicId: session.user.clinic.id,
+        date: appointmentDateTime,
+        appointmentPriceInCents: parsedInput.appointmentPriceInCents,
+        status: "active",
+      })
+      .returning();
+
+    // Buscar dados do paciente e profissional para criar notificação
+    const patient = await db.query.patientsTable.findFirst({
+      where: eq(patientsTable.id, parsedInput.patientId),
     });
+
+    const professional = await db.query.professionalsTable.findFirst({
+      where: eq(professionalsTable.id, parsedInput.professionalId),
+    });
+
+    // Criar notificação de agendamento confirmado
+    if (patient && professional) {
+      const formattedDate = dayjs(appointmentDateTime).format("DD/MM/YYYY");
+      const formattedTime = dayjs(appointmentDateTime).format("HH:mm");
+
+      await createAppointmentConfirmedNotification(
+        session.user.id,
+        patient.name,
+        professional.name,
+        formattedDate,
+        formattedTime,
+        newAppointment.id,
+      );
+    }
 
     revalidatePath("/appointments");
 

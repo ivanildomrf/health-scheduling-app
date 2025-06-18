@@ -2,8 +2,10 @@
 
 import { db } from "@/db";
 import { appointmentsTable } from "@/db/schema";
+import { createAppointmentCancelledNotification } from "@/helpers/notifications";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
+import dayjs from "dayjs";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -26,6 +28,10 @@ export const cancelAppointment = actionClient
 
     const appointment = await db.query.appointmentsTable.findFirst({
       where: eq(appointmentsTable.id, parsedInput.id),
+      with: {
+        patient: true,
+        professional: true,
+      },
     });
 
     if (!appointment) {
@@ -44,6 +50,21 @@ export const cancelAppointment = actionClient
       .update(appointmentsTable)
       .set({ status: "cancelled" })
       .where(eq(appointmentsTable.id, parsedInput.id));
+
+    // Criar notificação de cancelamento
+    if (appointment.patient && appointment.professional) {
+      const formattedDate = dayjs(appointment.date).format("DD/MM/YYYY");
+      const formattedTime = dayjs(appointment.date).format("HH:mm");
+
+      await createAppointmentCancelledNotification(
+        session.user.id,
+        appointment.patient.name,
+        appointment.professional.name,
+        formattedDate,
+        formattedTime,
+        appointment.id,
+      );
+    }
 
     revalidatePath("/appointments");
   });

@@ -2,6 +2,7 @@
 
 import { db } from "@/db";
 import { appointmentsTable } from "@/db/schema";
+import { createAppointmentCompletedNotification } from "@/helpers/notifications";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
 import { eq } from "drizzle-orm";
@@ -30,6 +31,10 @@ export const completeAppointment = actionClient
 
     const appointment = await db.query.appointmentsTable.findFirst({
       where: eq(appointmentsTable.id, parsedInput.id),
+      with: {
+        patient: true,
+        professional: true,
+      },
     });
 
     if (!appointment) {
@@ -54,6 +59,16 @@ export const completeAppointment = actionClient
       .update(appointmentsTable)
       .set({ status: "completed" })
       .where(eq(appointmentsTable.id, parsedInput.id));
+
+    // Criar notificação de conclusão
+    if (appointment.patient && appointment.professional) {
+      await createAppointmentCompletedNotification(
+        session.user.id,
+        appointment.patient.name,
+        appointment.professional.name,
+        appointment.id,
+      );
+    }
 
     revalidatePath("/appointments");
   });

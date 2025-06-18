@@ -10,152 +10,184 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  AlertCircle,
+  Bell,
+  CheckCircle,
+  Clock,
+  Settings,
+  UserCheck,
+  UserPlus,
+} from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
-import { useState } from "react";
 import { toast } from "sonner";
 
 interface NotificationTestPanelProps {
   userId: string;
 }
 
-const notificationTypes = [
-  { value: "appointment_confirmed", label: "Consulta confirmada" },
-  { value: "appointment_cancelled", label: "Consulta cancelada" },
-  { value: "appointment_reminder_24h", label: "Lembrete 24h" },
-  { value: "appointment_reminder_2h", label: "Lembrete 2h" },
-  { value: "appointment_completed", label: "Consulta concluída" },
-  { value: "appointment_expired", label: "Consulta expirada" },
-  { value: "new_patient_registered", label: "Novo paciente" },
-  { value: "new_professional_added", label: "Novo profissional" },
-  { value: "clinic_updated", label: "Clínica atualizada" },
-  { value: "system_alert", label: "Alerta do sistema" },
-] as const;
-
 export function NotificationTestPanel({ userId }: NotificationTestPanelProps) {
-  const [selectedType, setSelectedType] = useState<string>("");
-  const [count, setCount] = useState(1);
-
-  const { execute: createTest, isExecuting } = useAction(
+  const { execute: createTests, isExecuting } = useAction(
     createTestNotifications,
     {
-      onSuccess: ({ data }) => {
-        if (data?.data && "count" in data.data) {
-          toast.success(
-            `${data.data.count} notificação(ões) criada(s) com sucesso!`,
-          );
-        } else {
-          toast.success("Notificações criadas com sucesso!");
-        }
+      onSuccess: () => {
+        toast.success("Notificações de teste criadas com sucesso!");
       },
-      onError: ({ error }) => {
+      onError: (error) => {
         toast.error("Erro ao criar notificações de teste");
-        console.error("Erro ao criar notificações de teste:", error);
+        console.error("Erro:", error);
       },
     },
   );
 
-  const handleCreateSpecific = () => {
-    if (!selectedType) {
-      toast.error("Selecione um tipo de notificação");
-      return;
-    }
-
-    createTest({
-      userId,
-      type: selectedType as any,
-      count,
-    });
-  };
-
-  const handleCreateOneOfEach = () => {
-    // Criar uma notificação de cada tipo
-    const types = notificationTypes.map((t) => t.value);
-
-    types.forEach((type, index) => {
-      setTimeout(() => {
-        createTest({
-          userId,
-          type: type as any,
-          count: 1,
-        });
-      }, index * 500); // Espaçar as criações
-    });
+  const handleCreateTests = () => {
+    createTests({ userId });
   };
 
   return (
-    <Card className="border-dashed border-orange-200 bg-orange-50/50">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm font-medium text-orange-700">
-          🧪 Painel de Teste - Notificações
-        </CardTitle>
-        <CardDescription className="text-xs text-orange-600">
-          Apenas visível em ambiente de desenvolvimento
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          {/* Tipo de notificação */}
-          <Select value={selectedType} onValueChange={setSelectedType}>
-            <SelectTrigger className="text-sm">
-              <SelectValue placeholder="Tipo de notificação" />
-            </SelectTrigger>
-            <SelectContent>
-              {notificationTypes.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Quantidade */}
-          <Select
-            value={count.toString()}
-            onValueChange={(value) => setCount(parseInt(value))}
-          >
-            <SelectTrigger className="text-sm">
-              <SelectValue placeholder="Quantidade" />
-            </SelectTrigger>
-            <SelectContent>
-              {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
-                <SelectItem key={num} value={num.toString()}>
-                  {num} notificação{num > 1 ? "ões" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Botão de criar específico */}
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Painel de Testes de Notificações
+          </CardTitle>
+          <CardDescription>
+            Crie notificações de exemplo para testar o sistema
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <Button
-            onClick={handleCreateSpecific}
-            disabled={isExecuting || !selectedType}
-            size="sm"
-            variant="outline"
-            className="text-sm"
-          >
-            {isExecuting ? "Criando..." : "Criar"}
-          </Button>
-        </div>
-
-        {/* Botão de criar uma de cada */}
-        <div className="flex justify-center border-t border-orange-200 pt-2">
-          <Button
-            onClick={handleCreateOneOfEach}
+            onClick={handleCreateTests}
             disabled={isExecuting}
-            size="sm"
-            variant="outline"
-            className="border-orange-300 text-sm text-orange-700 hover:bg-orange-100"
+            className="w-full"
           >
-            {isExecuting ? "Criando..." : "Criar uma de cada tipo"}
+            {isExecuting ? "Criando..." : "Criar Notificações de Teste"}
           </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Integração Automática Ativa
+          </CardTitle>
+          <CardDescription>
+            As notificações agora são criadas automaticamente nas seguintes
+            situações:
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid gap-3">
+              <div className="flex items-center gap-3 rounded-lg bg-green-50 p-3 dark:bg-green-900/20">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <div>
+                  <h4 className="font-medium">Agendamentos Confirmados</h4>
+                  <p className="text-muted-foreground text-sm">
+                    Quando uma nova consulta é criada no sistema
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 rounded-lg bg-red-50 p-3 dark:bg-red-900/20">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <div>
+                  <h4 className="font-medium">Agendamentos Cancelados</h4>
+                  <p className="text-muted-foreground text-sm">
+                    Quando uma consulta é cancelada
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+                <CheckCircle className="h-5 w-5 text-blue-600" />
+                <div>
+                  <h4 className="font-medium">Consultas Concluídas</h4>
+                  <p className="text-muted-foreground text-sm">
+                    Quando uma consulta é marcada como finalizada
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 rounded-lg bg-orange-50 p-3 dark:bg-orange-900/20">
+                <Clock className="h-5 w-5 text-orange-600" />
+                <div>
+                  <h4 className="font-medium">Consultas Expiradas</h4>
+                  <p className="text-muted-foreground text-sm">
+                    Quando uma consulta não é realizada
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 rounded-lg bg-purple-50 p-3 dark:bg-purple-900/20">
+                <UserPlus className="h-5 w-5 text-purple-600" />
+                <div>
+                  <h4 className="font-medium">Novos Pacientes</h4>
+                  <p className="text-muted-foreground text-sm">
+                    Quando um novo paciente é cadastrado
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 rounded-lg bg-teal-50 p-3 dark:bg-teal-900/20">
+                <UserCheck className="h-5 w-5 text-teal-600" />
+                <div>
+                  <h4 className="font-medium">Novos Profissionais</h4>
+                  <p className="text-muted-foreground text-sm">
+                    Quando um novo profissional é adicionado à equipe
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Sistema de Lembretes Automáticos
+          </CardTitle>
+          <CardDescription>
+            Lembretes são enviados automaticamente para consultas futuras
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between rounded-lg bg-yellow-50 p-3 dark:bg-yellow-900/20">
+              <div className="flex items-center gap-3">
+                <Clock className="h-4 w-4 text-yellow-600" />
+                <div>
+                  <h4 className="font-medium">Lembrete 24h</h4>
+                  <p className="text-muted-foreground text-sm">
+                    Um dia antes da consulta
+                  </p>
+                </div>
+              </div>
+              <span className="rounded bg-yellow-100 px-2 py-1 text-xs dark:bg-yellow-900/40">
+                Automático
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg bg-red-50 p-3 dark:bg-red-900/20">
+              <div className="flex items-center gap-3">
+                <Clock className="h-4 w-4 text-red-600" />
+                <div>
+                  <h4 className="font-medium">Lembrete 2h</h4>
+                  <p className="text-muted-foreground text-sm">
+                    Duas horas antes da consulta
+                  </p>
+                </div>
+              </div>
+              <span className="rounded bg-red-100 px-2 py-1 text-xs dark:bg-red-900/40">
+                Automático
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

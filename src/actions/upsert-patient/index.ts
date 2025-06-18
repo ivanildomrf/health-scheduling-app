@@ -2,8 +2,10 @@
 
 import { db } from "@/db";
 import { patientsTable } from "@/db/schema";
+import { createNewPatientNotification } from "@/helpers/notifications";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { upsertPatientSchema } from "./schema";
@@ -22,6 +24,16 @@ export const upsertPatient = actionClient
     if (!session.user.clinic) {
       return new Error("Clínica não encontrada");
     }
+
+    // Verificar se é um novo paciente ou edição
+    let existingPatient = null;
+    if (parsedInput.id) {
+      existingPatient = await db.query.patientsTable.findFirst({
+        where: eq(patientsTable.id, parsedInput.id),
+      });
+    }
+
+    const isNewPatient = !existingPatient;
 
     await db
       .insert(patientsTable)
@@ -43,6 +55,17 @@ export const upsertPatient = actionClient
           sex: parsedInput.sex,
         },
       });
+
+    // Criar notificação apenas para novos pacientes
+    if (isNewPatient) {
+      await createNewPatientNotification(
+        session.user.id,
+        parsedInput.name,
+        parsedInput.phone,
+        parsedInput.email,
+        parsedInput.id,
+      );
+    }
 
     revalidatePath("/patients");
 

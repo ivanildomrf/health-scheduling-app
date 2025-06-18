@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { notificationsTable } from "@/db/schema";
 import dayjs from "dayjs";
+import type { NotificationType } from "@/lib/types/notifications";
 
 export interface NotificationParams {
   userId: string;
@@ -26,24 +27,14 @@ export interface ProfessionalNotificationData {
   clinicName: string;
 }
 
-// Função utilitária para criar notificação diretamente no banco
-async function createNotificationInDB(
-  type:
-    | "appointment_confirmed"
-    | "appointment_cancelled"
-    | "appointment_reminder_24h"
-    | "appointment_reminder_2h"
-    | "appointment_completed"
-    | "appointment_expired"
-    | "new_patient_registered"
-    | "new_professional_added"
-    | "clinic_updated"
-    | "system_alert",
+// Função para criar notificação automaticamente
+export async function createNotificationForUser(
+  userId: string,
+  type: NotificationType,
   title: string,
   message: string,
-  userId: string,
   targetId?: string,
-  targetType?: string,
+  targetType?: "appointment" | "patient" | "professional" | "clinic" | "system"
 ) {
   try {
     const [notification] = await db
@@ -54,169 +45,139 @@ async function createNotificationInDB(
         message,
         userId,
         targetId,
-        targetType,
+        targetType: targetType || "system",
       })
       .returning();
 
-    return {
-      success: true,
-      data: notification,
-      message: "Notificação criada com sucesso",
-    };
+    return notification;
   } catch (error) {
     console.error("Erro ao criar notificação:", error);
-    return {
-      success: false,
-      error: "Erro interno do servidor",
-    };
+    return null;
   }
 }
 
-// Notificações de Agendamento
+// Funções específicas para cada tipo de evento
 export async function createAppointmentConfirmedNotification(
-  params: NotificationParams,
-  data: AppointmentNotificationData,
+  userId: string,
+  patientName: string,
+  professionalName: string,
+  date: string,
+  time: string,
+  appointmentId?: string
 ) {
-  const formattedDate = dayjs(data.appointmentDate).format(
-    "DD/MM/YYYY [às] HH:mm",
-  );
-
-  return await createNotificationInDB(
+  return createNotificationForUser(
+    userId,
     "appointment_confirmed",
-    "Consulta Agendada! 📅",
-    `Sua consulta com ${data.professionalName} foi confirmada para ${formattedDate}`,
-    params.userId,
-    params.targetId,
-    params.targetType || "appointment",
+    `Consulta Confirmada - ${patientName}`,
+    `A consulta do paciente ${patientName} com ${professionalName} para ${date} às ${time} foi confirmada.`,
+    appointmentId,
+    "appointment"
   );
 }
 
 export async function createAppointmentCancelledNotification(
-  params: NotificationParams,
-  data: AppointmentNotificationData,
+  userId: string,
+  patientName: string,
+  professionalName: string,
+  date: string,
+  time: string,
+  appointmentId?: string
 ) {
-  const formattedDate = dayjs(data.appointmentDate).format(
-    "DD/MM/YYYY [às] HH:mm",
-  );
-
-  return await createNotificationInDB(
+  return createNotificationForUser(
+    userId,
     "appointment_cancelled",
-    "Consulta Cancelada ❌",
-    `Sua consulta com ${data.professionalName} marcada para ${formattedDate} foi cancelada`,
-    params.userId,
-    params.targetId,
-    params.targetType || "appointment",
-  );
-}
-
-export async function createAppointmentReminderNotification(
-  params: NotificationParams,
-  data: AppointmentNotificationData,
-  reminderType: "24h" | "2h",
-) {
-  const formattedDate = dayjs(data.appointmentDate).format(
-    "DD/MM/YYYY [às] HH:mm",
-  );
-  const reminderText = reminderType === "24h" ? "amanhã" : "em 2 horas";
-
-  return await createNotificationInDB(
-    reminderType === "24h"
-      ? "appointment_reminder_24h"
-      : "appointment_reminder_2h",
-    `Lembrete de Consulta ⏰`,
-    `Você tem uma consulta com ${data.professionalName} ${reminderText} (${formattedDate})`,
-    params.userId,
-    params.targetId,
-    params.targetType || "appointment",
+    `Consulta Cancelada - ${patientName}`,
+    `A consulta do paciente ${patientName} com ${professionalName} para ${date} às ${time} foi cancelada. Reagendamento necessário.`,
+    appointmentId,
+    "appointment"
   );
 }
 
 export async function createAppointmentCompletedNotification(
-  params: NotificationParams,
-  data: AppointmentNotificationData,
+  userId: string,
+  patientName: string,
+  professionalName: string,
+  appointmentId?: string
 ) {
-  return await createNotificationInDB(
+  return createNotificationForUser(
+    userId,
     "appointment_completed",
-    "Consulta Concluída ✅",
-    `Sua consulta com ${data.professionalName} foi concluída com sucesso`,
-    params.userId,
-    params.targetId,
-    params.targetType || "appointment",
+    `Consulta Finalizada - ${patientName}`,
+    `A consulta do paciente ${patientName} com ${professionalName} foi concluída com sucesso. Registros atualizados.`,
+    appointmentId,
+    "appointment"
   );
 }
 
 export async function createAppointmentExpiredNotification(
-  params: NotificationParams,
-  data: AppointmentNotificationData,
+  userId: string,
+  patientName: string,
+  professionalName: string,
+  appointmentId?: string
 ) {
-  const formattedDate = dayjs(data.appointmentDate).format(
-    "DD/MM/YYYY [às] HH:mm",
-  );
-
-  return await createNotificationInDB(
+  return createNotificationForUser(
+    userId,
     "appointment_expired",
-    "Consulta Expirada ⏳",
-    `Sua consulta com ${data.professionalName} de ${formattedDate} expirou`,
-    params.userId,
-    params.targetId,
-    params.targetType || "appointment",
+    `Consulta Não Realizada - ${patientName}`,
+    `A consulta agendada do paciente ${patientName} com ${professionalName} não foi realizada e foi marcada como expirada.`,
+    appointmentId,
+    "appointment"
   );
 }
 
-// Notificações de Sistema
 export async function createNewPatientNotification(
-  params: NotificationParams,
-  data: PatientNotificationData,
+  userId: string,
+  patientName: string,
+  patientPhone?: string,
+  patientEmail?: string,
+  patientId?: string
 ) {
-  return await createNotificationInDB(
+  const contactInfo = [];
+  if (patientPhone) contactInfo.push(`telefone ${patientPhone}`);
+  if (patientEmail) contactInfo.push(`email ${patientEmail}`);
+  
+  const contactText = contactInfo.length > 0 
+    ? `. Dados: ${contactInfo.join(", ")}`
+    : "";
+
+  return createNotificationForUser(
+    userId,
     "new_patient_registered",
-    "Novo Paciente Cadastrado 👤",
-    `${data.patientName} se cadastrou na ${data.clinicName}`,
-    params.userId,
-    params.targetId,
-    params.targetType || "patient",
+    `Novo Paciente Cadastrado`,
+    `O paciente ${patientName} foi cadastrado no sistema${contactText}`,
+    patientId,
+    "patient"
   );
 }
 
 export async function createNewProfessionalNotification(
-  params: NotificationParams,
-  data: ProfessionalNotificationData,
+  userId: string,
+  professionalName: string,
+  specialty?: string,
+  professionalId?: string
 ) {
-  return await createNotificationInDB(
+  const specialtyText = specialty ? `. Especialidade: ${specialty}` : "";
+  
+  return createNotificationForUser(
+    userId,
     "new_professional_added",
-    "Novo Profissional Adicionado 👨‍⚕️",
-    `${data.professionalName} (${data.speciality}) foi adicionado à ${data.clinicName}`,
-    params.userId,
-    params.targetId,
-    params.targetType || "professional",
+    `Novo Profissional Adicionado`,
+    `${professionalName} foi adicionado à equipe da clínica${specialtyText}. Agenda disponível para agendamentos.`,
+    professionalId,
+    "professional"
   );
 }
 
 export async function createClinicUpdatedNotification(
-  params: NotificationParams,
-  clinicName: string,
+  userId: string,
+  clinicId?: string
 ) {
-  return await createNotificationInDB(
+  return createNotificationForUser(
+    userId,
     "clinic_updated",
-    "Clínica Atualizada 🏥",
-    `As informações da ${clinicName} foram atualizadas`,
-    params.userId,
-    params.targetId,
-    params.targetType || "clinic",
-  );
-}
-
-export async function createSystemAlertNotification(
-  params: NotificationParams,
-  title: string,
-  message: string,
-) {
-  return await createNotificationInDB(
-    "system_alert",
-    `⚠️ ${title}`,
-    message,
-    params.userId,
-    params.targetId,
-    params.targetType || "system",
+    `Informações da Clínica Atualizadas`,
+    `As informações da clínica foram atualizadas com sucesso. Verifique os novos dados no sistema de gestão.`,
+    clinicId,
+    "clinic"
   );
 }

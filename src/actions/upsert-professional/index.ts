@@ -2,10 +2,12 @@
 
 import { db } from "@/db";
 import { professionalsTable } from "@/db/schema";
+import { createNewProfessionalNotification } from "@/helpers/notifications";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { upsertProfessionalSchema } from "./schema";
@@ -45,6 +47,16 @@ export const upsertProfessional = actionClient
       return new Error("Clínica não encontrada");
     }
 
+    // Verificar se é um novo profissional ou edição
+    let existingProfessional = null;
+    if (parsedInput.id) {
+      existingProfessional = await db.query.professionalsTable.findFirst({
+        where: eq(professionalsTable.id, parsedInput.id),
+      });
+    }
+
+    const isNewProfessional = !existingProfessional;
+
     await db
       .insert(professionalsTable)
       .values({
@@ -70,6 +82,16 @@ export const upsertProfessional = actionClient
           availableToTime: availableToTimeUTC,
         },
       });
+
+    // Criar notificação apenas para novos profissionais
+    if (isNewProfessional) {
+      await createNewProfessionalNotification(
+        session.user.id,
+        parsedInput.name,
+        parsedInput.specialty,
+        parsedInput.id,
+      );
+    }
 
     revalidatePath("/professionals");
 

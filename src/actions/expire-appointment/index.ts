@@ -2,6 +2,7 @@
 
 import { db } from "@/db";
 import { appointmentsTable } from "@/db/schema";
+import { createAppointmentExpiredNotification } from "@/helpers/notifications";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
 import { eq } from "drizzle-orm";
@@ -24,8 +25,16 @@ export const expireAppointment = actionClient
       throw new Error("Não autorizado");
     }
 
+    if (!session?.user.clinic?.id) {
+      throw new Error("Clínica não encontrada");
+    }
+
     const appointment = await db.query.appointmentsTable.findFirst({
       where: eq(appointmentsTable.id, parsedInput.id),
+      with: {
+        patient: true,
+        professional: true,
+      },
     });
 
     if (!appointment) {
@@ -56,6 +65,16 @@ export const expireAppointment = actionClient
       .update(appointmentsTable)
       .set({ status: "expired" })
       .where(eq(appointmentsTable.id, parsedInput.id));
+
+    // Criar notificação de expiração
+    if (appointment.patient && appointment.professional) {
+      await createAppointmentExpiredNotification(
+        session.user.id,
+        appointment.patient.name,
+        appointment.professional.name,
+        appointment.id,
+      );
+    }
 
     revalidatePath("/appointments");
   });

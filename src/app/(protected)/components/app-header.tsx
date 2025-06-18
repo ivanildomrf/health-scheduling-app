@@ -27,7 +27,6 @@ export function AppHeader() {
           {userId && (
             <NotificationDropdown
               userId={userId}
-              size="md"
               className="hover:bg-gray-100"
             />
           )}

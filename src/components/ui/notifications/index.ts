@@ -21,11 +21,10 @@ export {
   createAppointmentCompletedNotification,
   createAppointmentConfirmedNotification,
   createAppointmentExpiredNotification,
-  createAppointmentReminderNotification,
   createClinicUpdatedNotification,
   createNewPatientNotification,
   createNewProfessionalNotification,
-  createSystemAlertNotification,
+  createNotificationForUser,
 } from "@/helpers/notifications";
 
 // Types

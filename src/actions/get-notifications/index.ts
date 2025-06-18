@@ -3,7 +3,7 @@
 import { db } from "@/db";
 import { notificationsTable } from "@/db/schema";
 import { actionClient } from "@/lib/safe-action";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 const getNotificationsSchema = z.object({
@@ -20,24 +20,24 @@ export const getNotifications = actionClient
     const { userId, limit, offset, type, isRead } = parsedInput;
 
     try {
-      let query = db
-        .select()
-        .from(notificationsTable)
-        .where(eq(notificationsTable.userId, userId))
-        .orderBy(desc(notificationsTable.createdAt))
-        .limit(limit)
-        .offset(offset);
+      // Construir condições de filtro
+      const conditions = [eq(notificationsTable.userId, userId)];
 
-      // Aplicar filtros opcionais
       if (type) {
-        query = query.where(eq(notificationsTable.type, type as any));
+        conditions.push(eq(notificationsTable.type, type as any));
       }
 
       if (typeof isRead === "boolean") {
-        query = query.where(eq(notificationsTable.isRead, isRead));
+        conditions.push(eq(notificationsTable.isRead, isRead));
       }
 
-      const notifications = await query;
+      const notifications = await db
+        .select()
+        .from(notificationsTable)
+        .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+        .orderBy(desc(notificationsTable.createdAt))
+        .limit(limit)
+        .offset(offset);
 
       return {
         success: true,
