@@ -55,6 +55,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { EmailClientPreview } from "./email-client-preview";
 
 const EMAIL_TYPE_OPTIONS = [
   { value: "appointment_reminder_24h", label: "Lembrete 24h" },
@@ -228,10 +229,238 @@ export function EmailTemplateEditor({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
-        <div className="lg:col-span-3">
+      {activeTab === "editor" ? (
+        // Layout do Editor com sidebar
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+          <div className="xl:col-span-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="editor">
+                  <Code className="mr-2 h-4 w-4" />
+                  Editor
+                </TabsTrigger>
+                <TabsTrigger value="preview">
+                  <Eye className="mr-2 h-4 w-4" />
+                  Preview
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="editor" className="space-y-4">
+                <Form {...form}>
+                  <form
+                    id="template-form"
+                    onSubmit={form.handleSubmit(handleSubmit)}
+                    className="space-y-6"
+                  >
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nome do Template</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Ex: Lembrete de Consulta Personalizado"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tipo do Template</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione o tipo" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {EMAIL_TYPE_OPTIONS.map((option) => (
+                                  <SelectItem
+                                    key={option.value}
+                                    value={option.value}
+                                  >
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="subject"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Assunto do Email</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Ex: {{clinicName}} - Lembrete de Consulta"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Use variáveis como patientName para personalizar
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="htmlContent"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Conteúdo HTML</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Conteúdo HTML do email..."
+                              className="min-h-[400px] font-mono text-sm"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Use HTML e variáveis para criar seu template
+                            personalizado
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="textContent"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Versão Texto (Opcional)</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Versão em texto simples do email..."
+                              className="min-h-[200px]"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Versão alternativa em texto para clientes que não
+                            suportam HTML
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="isActive"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">
+                              Template Ativo
+                            </FormLabel>
+                            <FormDescription>
+                              Templates ativos podem ser usados para envio de
+                              emails
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </form>
+                </Form>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Sidebar das variáveis - apenas visível no modo editor */}
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Type className="h-4 w-4" />
+                  Variáveis Disponíveis
+                </CardTitle>
+                <CardDescription>
+                  Clique para inserir no template
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[500px]">
+                  <div className="space-y-3">
+                    {Object.entries(AVAILABLE_VARIABLES).map(
+                      ([variable, description]) => (
+                        <div key={variable} className="space-y-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto w-full justify-start p-2 text-left"
+                            onClick={() =>
+                              insertVariable(variable.replace(/[{}]/g, ""))
+                            }
+                          >
+                            <div>
+                              <div className="font-mono text-xs text-blue-600">
+                                {variable}
+                              </div>
+                              <div className="text-muted-foreground text-xs">
+                                {description}
+                              </div>
+                            </div>
+                          </Button>
+                          <Separator />
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lightbulb className="h-4 w-4" />
+                  Dicas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex items-start gap-2">
+                  <Info className="mt-1 h-3 w-3 text-blue-500" />
+                  <p>Use variáveis entre chaves duplas</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      ) : (
+        // Layout do Preview - sem sidebar, largura total
+        <div className="w-full">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
               <TabsTrigger value="editor">
                 <Code className="mr-2 h-4 w-4" />
                 Editor
@@ -242,231 +471,65 @@ export function EmailTemplateEditor({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="editor" className="space-y-4">
-              <Form {...form}>
-                <form
-                  id="template-form"
-                  onSubmit={form.handleSubmit(handleSubmit)}
-                  className="space-y-6"
-                >
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nome do Template</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Ex: Lembrete de Consulta Personalizado"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tipo do Template</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o tipo" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {EMAIL_TYPE_OPTIONS.map((option) => (
-                                <SelectItem
-                                  key={option.value}
-                                  value={option.value}
-                                >
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="subject"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Assunto do Email</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Ex: {{clinicName}} - Lembrete de Consulta"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Use variáveis como patientName para personalizar
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="htmlContent"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Conteúdo HTML</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Conteúdo HTML do email..."
-                            className="min-h-[400px] font-mono text-sm"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Use HTML e variáveis para criar seu template
-                          personalizado
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="textContent"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Versão Texto (Opcional)</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Versão em texto simples do email..."
-                            className="min-h-[200px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Versão alternativa em texto para clientes que não
-                          suportam HTML
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="isActive"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">
-                            Template Ativo
-                          </FormLabel>
-                          <FormDescription>
-                            Templates ativos podem ser usados para envio de
-                            emails
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </form>
-              </Form>
-            </TabsContent>
-
             <TabsContent value="preview">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Preview do Email</CardTitle>
-                  <CardDescription>
-                    Visualização com dados de exemplo
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div
-                    className="rounded-lg border bg-white p-4"
-                    dangerouslySetInnerHTML={{ __html: previewHtml }}
+              <div className="space-y-4">
+                {/* Header do preview */}
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                        <Eye className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-blue-900">
+                          Preview do Template
+                        </h3>
+                        <p className="text-sm text-blue-700">
+                          Visualização com dados de exemplo
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setActiveTab("editor")}
+                        className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                      >
+                        <Code className="mr-2 h-3 w-3" />
+                        Voltar ao Editor
+                      </Button>
+                      {initialData?.id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          asChild
+                          className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                        >
+                          <Link
+                            href={`/email-templates/${initialData.id}/preview`}
+                          >
+                            <Eye className="mr-2 h-3 w-3" />
+                            Preview Completo
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Preview do email - largura total */}
+                <div className="w-full">
+                  <EmailClientPreview
+                    subject={form.watch("subject") || "Assunto do Email"}
+                    htmlContent={previewHtml}
                   />
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
-
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Type className="h-4 w-4" />
-                Variáveis Disponíveis
-              </CardTitle>
-              <CardDescription>Clique para inserir no template</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[500px]">
-                <div className="space-y-3">
-                  {Object.entries(AVAILABLE_VARIABLES).map(
-                    ([variable, description]) => (
-                      <div key={variable} className="space-y-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto w-full justify-start p-2 text-left"
-                          onClick={() =>
-                            insertVariable(variable.replace(/[{}]/g, ""))
-                          }
-                        >
-                          <div>
-                            <div className="font-mono text-xs text-blue-600">
-                              {variable}
-                            </div>
-                            <div className="text-muted-foreground text-xs">
-                              {description}
-                            </div>
-                          </div>
-                        </Button>
-                        <Separator />
-                      </div>
-                    ),
-                  )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lightbulb className="h-4 w-4" />
-                Dicas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex items-start gap-2">
-                <Info className="mt-1 h-3 w-3 text-blue-500" />
-                <p>Use variáveis entre chaves duplas</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

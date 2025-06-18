@@ -3,7 +3,7 @@
 import { db } from "@/db";
 import { emailTemplatesTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
 export async function getEmailTemplates() {
@@ -53,13 +53,16 @@ export async function getEmailTemplateById(id: string) {
 
   try {
     const template = await db.query.emailTemplatesTable.findFirst({
-      where: eq(emailTemplatesTable.id, id),
+      where: and(
+        eq(emailTemplatesTable.id, id),
+        eq(emailTemplatesTable.clinicId, session.user.clinic.id),
+      ),
       with: {
         attachments: true,
       },
     });
 
-    if (!template || template.clinicId !== session.user.clinic.id) {
+    if (!template) {
       throw new Error("Template não encontrado");
     }
 
@@ -88,7 +91,10 @@ export async function getEmailTemplateByType(type: string) {
 
   try {
     const template = await db.query.emailTemplatesTable.findFirst({
-      where: eq(emailTemplatesTable.type, type as any),
+      where: and(
+        eq(emailTemplatesTable.type, type as any),
+        eq(emailTemplatesTable.clinicId, session.user.clinic.id),
+      ),
       with: {
         attachments: true,
       },

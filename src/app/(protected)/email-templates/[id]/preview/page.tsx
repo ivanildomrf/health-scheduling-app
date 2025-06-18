@@ -12,6 +12,7 @@ import { EmailTemplateEngine } from "@/helpers/email-template-engine";
 import { ArrowLeft, Edit, Mail } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { EmailClientPreview } from "../../_components/email-client-preview";
 
 interface EmailTemplatePreviewPageProps {
   params: Promise<{
@@ -111,32 +112,11 @@ export default async function EmailTemplatePreviewPage({
                 Como o email aparecerá para os destinatários
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-hidden rounded-lg border">
-                {/* Cabeçalho simulado do email */}
-                <div className="border-b bg-gray-50 p-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Para:</span>
-                      <span className="text-muted-foreground text-sm">
-                        maria.silva@email.com
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Assunto:</span>
-                      <span className="text-muted-foreground text-sm">
-                        {previewSubject}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Conteúdo do email */}
-                <div
-                  className="bg-white p-4"
-                  dangerouslySetInnerHTML={{ __html: previewHtml }}
-                />
-              </div>
+            <CardContent className="p-4">
+              <EmailClientPreview
+                subject={previewSubject}
+                htmlContent={previewHtml}
+              />
             </CardContent>
           </Card>
 
