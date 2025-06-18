@@ -5,10 +5,27 @@ import { NotificationDropdown } from "@/components/ui/notification-dropdown";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
 import { Settings } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 export function AppHeader() {
   const session = authClient.useSession();
   const userId = session.data?.user?.id;
+  const pathname = usePathname();
+
+  const getPageTitle = () => {
+    const titleMap: Record<string, string> = {
+      "/dashboard": "Dashboard",
+      "/appointments": "Agendamentos",
+      "/professionals": "Profissionais",
+      "/patients": "Pacientes",
+      "/clinics": "Clínicas",
+      "/notifications": "Notificações",
+      "/email-templates": "Templates de Email",
+      "/email-settings": "Configurações de Email",
+    };
+
+    return titleMap[pathname] || "MendX";
+  };
 
   return (
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 w-full border-b backdrop-blur">
@@ -39,22 +56,4 @@ export function AppHeader() {
       </div>
     </header>
   );
-}
-
-// Helper function to get page title based on pathname
-function getPageTitle() {
-  if (typeof window === "undefined") return "";
-
-  const pathname = window.location.pathname;
-
-  const titleMap: Record<string, string> = {
-    "/dashboard": "Dashboard",
-    "/appointments": "Agendamentos",
-    "/professionals": "Profissionais",
-    "/patients": "Pacientes",
-    "/clinics": "Clínicas",
-    "/notifications": "Notificações",
-  };
-
-  return titleMap[pathname] || "MendX";
 }
