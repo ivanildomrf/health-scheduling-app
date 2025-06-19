@@ -45,6 +45,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useAppointmentsContext } from "./appointments-context";
 
 dayjs.extend(utc);
 
@@ -99,6 +100,7 @@ const UpsertAppointmentForm = ({
   const [selectedProfessional, setSelectedProfessional] = useState<
     typeof professionalsTable.$inferSelect | null
   >(null);
+  const { onRefresh } = useAppointmentsContext();
 
   const form = useForm<z.infer<typeof formSchema>>({
     shouldUnregister: true,
@@ -115,6 +117,10 @@ const UpsertAppointmentForm = ({
   const upsertAppointmentAction = useAction(upsertAppointment, {
     onSuccess: () => {
       toast.success("Agendamento atualizado com sucesso");
+      // Revalidar os dados da tabela
+      if (onRefresh) {
+        onRefresh();
+      }
       onSuccess?.();
     },
     onError: (error) => {

@@ -26,8 +26,10 @@ import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { appointmentsTable } from "@/db/schema";
 import { Check, Clock, EditIcon, MoreVerticalIcon, XIcon } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useAppointmentsContext } from "./appointments-context";
 import UpsertAppointmentForm from "./upsert-appointment-form";
 
 interface AppointmentTableActionsProps {
@@ -46,10 +48,22 @@ export const AppointmentTableActions = ({
   appointment,
 }: AppointmentTableActionsProps) => {
   const [upsertDialogIsOpen, setUpsertDialogIsOpen] = useState<boolean>(false);
+  const router = useRouter();
+  const { onRefresh } = useAppointmentsContext();
+
+  const handleSuccess = (message: string) => {
+    toast.success(message);
+    // Revalidar os dados
+    if (onRefresh) {
+      onRefresh();
+    } else {
+      router.refresh();
+    }
+  };
 
   const cancelAppointmentAction = useAction(cancelAppointment, {
     onSuccess: () => {
-      toast.success("Agendamento cancelado com sucesso");
+      handleSuccess("Agendamento cancelado com sucesso");
     },
     onError: (error) => {
       toast.error("Erro ao cancelar agendamento");
@@ -58,7 +72,7 @@ export const AppointmentTableActions = ({
 
   const completeAppointmentAction = useAction(completeAppointment, {
     onSuccess: () => {
-      toast.success("Agendamento concluído com sucesso");
+      handleSuccess("Agendamento concluído com sucesso");
     },
     onError: (error) => {
       toast.error("Erro ao concluir agendamento");
@@ -67,7 +81,7 @@ export const AppointmentTableActions = ({
 
   const expireAppointmentAction = useAction(expireAppointment, {
     onSuccess: () => {
-      toast.success("Agendamento expirado com sucesso");
+      handleSuccess("Agendamento expirado com sucesso");
     },
     onError: (error) => {
       toast.error("Erro ao expirar agendamento");
