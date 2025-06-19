@@ -9,6 +9,7 @@ const updatePatientProfileSchema = z.object({
   patientId: z.string().uuid(),
   name: z.string().min(1, "Nome é obrigatório"),
   phone: z.string().min(1, "Telefone é obrigatório"),
+  cpf: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),

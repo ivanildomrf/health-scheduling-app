@@ -1,6 +1,9 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { db } from "@/db";
+import { patientsTable } from "@/db/schema";
 import { getPatientSession } from "@/helpers/patient-session";
+import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { PatientProfileForm } from "./components/patient-profile-form";
 
@@ -11,6 +14,38 @@ export default async function PatientProfilePage() {
   const session = await getPatientSession();
 
   if (!session) {
+    redirect("/patient/login");
+  }
+
+  // Buscar dados completos do paciente
+  const patientData = await db.query.patientsTable.findFirst({
+    where: eq(patientsTable.id, session.patient.id),
+    columns: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      cpf: true,
+      birthDate: true,
+      sex: true,
+      address: true,
+      city: true,
+      state: true,
+      zipCode: true,
+      emergencyContact: true,
+      emergencyPhone: true,
+    },
+    with: {
+      clinic: {
+        columns: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!patientData) {
     redirect("/patient/login");
   }
 
@@ -37,7 +72,7 @@ export default async function PatientProfilePage() {
               <div className="flex flex-col items-center space-y-4">
                 <Avatar className="h-20 w-20">
                   <AvatarFallback className="bg-blue-100 text-lg text-blue-600">
-                    {session.patient.name
+                    {patientData.name
                       .split(" ")
                       .map((n) => n[0])
                       .join("")
@@ -48,34 +83,34 @@ export default async function PatientProfilePage() {
 
                 <div className="text-center">
                   <h2 className="text-xl font-semibold text-gray-900">
-                    {session.patient.name}
+                    {patientData.name}
                   </h2>
-                  <p className="text-gray-600">{session.patient.email}</p>
+                  <p className="text-gray-600">{patientData.email}</p>
                 </div>
               </div>
 
               <div className="space-y-3 border-t pt-4">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Clínica</p>
-                  <p className="text-gray-900">{session.patient.clinic.name}</p>
+                  <p className="text-gray-900">{patientData.clinic.name}</p>
                 </div>
 
                 <div>
                   <p className="text-sm font-medium text-gray-500">Telefone</p>
-                  <p className="text-gray-900">{session.patient.phone}</p>
+                  <p className="text-gray-900">{patientData.phone}</p>
                 </div>
 
-                {session.patient.cpf && (
+                {patientData.cpf && (
                   <div>
                     <p className="text-sm font-medium text-gray-500">CPF</p>
-                    <p className="text-gray-900">{session.patient.cpf}</p>
+                    <p className="text-gray-900">{patientData.cpf}</p>
                   </div>
                 )}
 
                 <div>
                   <p className="text-sm font-medium text-gray-500">Sexo</p>
                   <p className="text-gray-900">
-                    {session.patient.sex === "male" ? "Masculino" : "Feminino"}
+                    {patientData.sex === "male" ? "Masculino" : "Feminino"}
                   </p>
                 </div>
               </div>
@@ -90,7 +125,7 @@ export default async function PatientProfilePage() {
               <CardTitle>Editar Informações</CardTitle>
             </CardHeader>
             <CardContent>
-              <PatientProfileForm patient={session.patient} />
+              <PatientProfileForm patientData={patientData} />
             </CardContent>
           </Card>
         </div>

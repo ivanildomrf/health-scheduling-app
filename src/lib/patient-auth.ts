@@ -163,6 +163,7 @@ export class PatientAuth {
     data: {
       name?: string;
       phone?: string;
+      cpf?: string;
       address?: string;
       city?: string;
       state?: string;

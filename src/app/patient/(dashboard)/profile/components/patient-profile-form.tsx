@@ -11,16 +11,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { PatientSession } from "@/lib/patient-auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAction } from "next-safe-action/hooks";
 import { useForm } from "react-hook-form";
+import { PatternFormat } from "react-number-format";
 import { toast } from "sonner";
 import { z } from "zod";
 
 const profileSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   phone: z.string().min(1, "Telefone é obrigatório"),
+  cpf: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
@@ -30,21 +31,40 @@ const profileSchema = z.object({
 });
 
 interface PatientProfileFormProps {
-  patient: PatientSession["patient"];
+  patientData: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    cpf: string | null;
+    birthDate: Date | null;
+    sex: "male" | "female";
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    zipCode: string | null;
+    emergencyContact: string | null;
+    emergencyPhone: string | null;
+    clinic: {
+      id: string;
+      name: string;
+    };
+  };
 }
 
-export function PatientProfileForm({ patient }: PatientProfileFormProps) {
+export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: patient.name,
-      phone: patient.phone,
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      emergencyContact: "",
-      emergencyPhone: "",
+      name: patientData.name,
+      phone: patientData.phone,
+      cpf: patientData.cpf || "",
+      address: patientData.address || "",
+      city: patientData.city || "",
+      state: patientData.state || "",
+      zipCode: patientData.zipCode || "",
+      emergencyContact: patientData.emergencyContact || "",
+      emergencyPhone: patientData.emergencyPhone || "",
     },
   });
 
@@ -63,7 +83,7 @@ export function PatientProfileForm({ patient }: PatientProfileFormProps) {
 
   const onSubmit = (values: z.infer<typeof profileSchema>) => {
     updateProfileAction.execute({
-      patientId: patient.id,
+      patientId: patientData.id,
       ...values,
     });
   };
@@ -93,10 +113,16 @@ export function PatientProfileForm({ patient }: PatientProfileFormProps) {
               <FormItem>
                 <FormLabel>Telefone</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
+                  <PatternFormat
+                    format="(##) #####-####"
+                    mask="_"
+                    customInput={Input}
                     placeholder="(11) 99999-9999"
                     disabled={updateProfileAction.isPending}
+                    value={field.value}
+                    onValueChange={(values) => {
+                      field.onChange(values.formattedValue);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -104,6 +130,30 @@ export function PatientProfileForm({ patient }: PatientProfileFormProps) {
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="cpf"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>CPF</FormLabel>
+              <FormControl>
+                <PatternFormat
+                  format="###.###.###-##"
+                  mask="_"
+                  customInput={Input}
+                  placeholder="123.456.789-00"
+                  disabled={updateProfileAction.isPending}
+                  value={field.value}
+                  onValueChange={(values) => {
+                    field.onChange(values.formattedValue);
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
@@ -159,10 +209,16 @@ export function PatientProfileForm({ patient }: PatientProfileFormProps) {
               <FormItem>
                 <FormLabel>CEP</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
+                  <PatternFormat
+                    format="#####-###"
+                    mask="_"
+                    customInput={Input}
                     placeholder="12345-678"
                     disabled={updateProfileAction.isPending}
+                    value={field.value}
+                    onValueChange={(values) => {
+                      field.onChange(values.formattedValue);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -201,10 +257,16 @@ export function PatientProfileForm({ patient }: PatientProfileFormProps) {
                 <FormItem>
                   <FormLabel>Telefone do Contato</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
+                    <PatternFormat
+                      format="(##) #####-####"
+                      mask="_"
+                      customInput={Input}
                       placeholder="(11) 99999-9999"
                       disabled={updateProfileAction.isPending}
+                      value={field.value}
+                      onValueChange={(values) => {
+                        field.onChange(values.formattedValue);
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
