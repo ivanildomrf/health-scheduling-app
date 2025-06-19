@@ -1,11 +1,13 @@
 "use client";
 
+import { getPatientAppointments } from "@/actions/get-patient-appointments";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrencyInCentsToBRL } from "@/helpers/currency";
 import dayjs from "dayjs";
 import { Calendar, Clock } from "lucide-react";
+import { useAction } from "next-safe-action/hooks";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -20,47 +22,35 @@ interface Appointment {
   status: "active" | "cancelled" | "expired" | "completed";
 }
 
-interface PatientUpcomingAppointmentsProps {
-  patientId: string;
-}
-
-export function PatientUpcomingAppointments({
-  patientId,
-}: PatientUpcomingAppointmentsProps) {
+export function PatientUpcomingAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // TODO: Implementar busca dos agendamentos do paciente
-    // Por enquanto, dados mockados
-    const mockAppointments: Appointment[] = [
-      {
-        id: "1",
-        date: dayjs().add(2, "day").toDate(),
-        professional: {
-          name: "Dr. João Silva",
-          speciality: "Cardiologia",
-        },
-        appointmentPriceInCents: 15000,
-        status: "active",
-      },
-      {
-        id: "2",
-        date: dayjs().add(1, "week").toDate(),
-        professional: {
-          name: "Dra. Maria Santos",
-          speciality: "Dermatologia",
-        },
-        appointmentPriceInCents: 12000,
-        status: "active",
-      },
-    ];
+  const getAppointmentsAction = useAction(getPatientAppointments, {
+    onSuccess: ({ data }) => {
+      if (data?.success && data.data?.appointments) {
+        // Filtrar apenas agendamentos ativos e futuros
+        const upcomingAppointments = data.data.appointments
+          .filter((appointment) => {
+            return (
+              appointment.status === "active" &&
+              dayjs(appointment.date).isAfter(dayjs())
+            );
+          })
+          .slice(0, 3); // Mostrar apenas os próximos 3
 
-    setTimeout(() => {
-      setAppointments(mockAppointments);
+        setAppointments(upcomingAppointments);
+      }
       setLoading(false);
-    }, 1000);
-  }, [patientId]);
+    },
+    onError: () => {
+      setLoading(false);
+    },
+  });
+
+  useEffect(() => {
+    getAppointmentsAction.execute({});
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {

@@ -2,21 +2,28 @@
 
 import { db } from "@/db";
 import { appointmentsTable } from "@/db/schema";
+import { getPatientSession } from "@/helpers/patient-session";
 import { actionClient } from "@/lib/safe-action";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 const getPatientAppointmentsSchema = z.object({
-  patientId: z.string().uuid(),
   status: z.enum(["active", "cancelled", "expired", "completed"]).optional(),
-  limit: z.number().min(1).max(100).default(10),
+  limit: z.number().min(1).max(100).default(50),
   offset: z.number().min(0).default(0),
 });
 
 export const getPatientAppointments = actionClient
   .schema(getPatientAppointmentsSchema)
   .action(async ({ parsedInput }) => {
-    const { patientId, status, limit, offset } = parsedInput;
+    const { status, limit, offset } = parsedInput;
+
+    const session = await getPatientSession();
+    if (!session) {
+      throw new Error("Sessão inválida");
+    }
+
+    const patientId = session.patient.id;
 
     try {
       // Criar filtros condicionais

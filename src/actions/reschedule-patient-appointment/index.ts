@@ -87,8 +87,9 @@ export const reschedulePatientAppointment = actionClient
       })
       .where(eq(appointmentsTable.id, appointmentId));
 
-    // Revalidar a página
+    // Revalidar as páginas
     revalidatePath("/patient/appointments");
+    revalidatePath("/patient/dashboard");
 
     return {
       success: true,

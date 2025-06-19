@@ -79,6 +79,7 @@ export const createPatientAppointment = actionClient
       .returning();
 
     revalidatePath("/patient/appointments");
+    revalidatePath("/patient/dashboard");
 
     return {
       success: true,

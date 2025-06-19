@@ -1,31 +1,53 @@
 "use client";
 
+import { getPatientAppointments } from "@/actions/get-patient-appointments";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import dayjs from "dayjs";
 import { Calendar, Clock, User } from "lucide-react";
+import { useAction } from "next-safe-action/hooks";
 import { useEffect, useState } from "react";
 
-interface PatientDashboardOverviewProps {
-  patientId: string;
-}
-
-export function PatientDashboardOverview({
-  patientId,
-}: PatientDashboardOverviewProps) {
+export function PatientDashboardOverview() {
   const [stats, setStats] = useState({
     totalAppointments: 0,
     upcomingAppointments: 0,
     completedAppointments: 0,
   });
 
+  const [loading, setLoading] = useState(true);
+
+  const getAppointmentsAction = useAction(getPatientAppointments, {
+    onSuccess: ({ data }) => {
+      if (data?.success && data.data?.appointments) {
+        const appointments = data.data.appointments;
+        const now = dayjs();
+
+        const totalAppointments = appointments.length;
+        const upcomingAppointments = appointments.filter(
+          (appointment) =>
+            appointment.status === "active" &&
+            dayjs(appointment.date).isAfter(now),
+        ).length;
+        const completedAppointments = appointments.filter(
+          (appointment) => appointment.status === "completed",
+        ).length;
+
+        setStats({
+          totalAppointments,
+          upcomingAppointments,
+          completedAppointments,
+        });
+      }
+      setLoading(false);
+    },
+    onError: () => {
+      setLoading(false);
+    },
+  });
+
   useEffect(() => {
-    // TODO: Implementar busca das estatísticas do paciente
-    // Por enquanto, dados mockados
-    setStats({
-      totalAppointments: 12,
-      upcomingAppointments: 2,
-      completedAppointments: 10,
-    });
-  }, [patientId]);
+    getAppointmentsAction.execute({});
+  }, []);
 
   const overviewCards = [
     {
@@ -73,7 +95,13 @@ export function PatientDashboardOverview({
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{card.value}</div>
+                <div className="text-2xl font-bold">
+                  {loading ? (
+                    <div className="h-8 w-8 animate-pulse rounded bg-gray-200"></div>
+                  ) : (
+                    card.value
+                  )}
+                </div>
                 <p className="text-xs text-gray-500">{card.description}</p>
               </CardContent>
             </Card>
