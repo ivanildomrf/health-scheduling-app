@@ -84,8 +84,11 @@ export const getDashboardAnalytics = actionClient
       .from(professionalsTable)
       .where(eq(professionalsTable.clinicId, clinicId));
 
-    // Dados mensais (últimos 6 meses)
-    const sixMonthsAgo = dayjs().subtract(6, "month").startOf("month").toDate();
+    // Dados mensais (últimos 12 meses para garantir que julho sempre apareça)
+    const twelveMonthsAgo = dayjs()
+      .subtract(12, "month")
+      .startOf("month")
+      .toDate();
 
     const monthlyAppointments = await db
       .select({
@@ -96,7 +99,7 @@ export const getDashboardAnalytics = actionClient
       .where(
         and(
           eq(appointmentsTable.clinicId, clinicId),
-          gte(appointmentsTable.date, sixMonthsAgo),
+          gte(appointmentsTable.date, twelveMonthsAgo),
         ),
       )
       .groupBy(sql`TO_CHAR(${appointmentsTable.date}, 'YYYY-MM')`)
@@ -111,7 +114,7 @@ export const getDashboardAnalytics = actionClient
       .where(
         and(
           eq(patientsTable.clinicId, clinicId),
-          gte(patientsTable.createdAt, sixMonthsAgo),
+          gte(patientsTable.createdAt, twelveMonthsAgo),
         ),
       )
       .groupBy(sql`TO_CHAR(${patientsTable.createdAt}, 'YYYY-MM')`)
@@ -179,7 +182,7 @@ export const getDashboardAnalytics = actionClient
       .orderBy(desc(count(appointmentsTable.id)))
       .limit(5);
 
-    // Processar dados mensais
+    // Processar dados mensais - mostrar últimos 6 meses mas com dados dos últimos 12 meses disponíveis
     const monthlyData = [];
     for (let i = 5; i >= 0; i--) {
       const month = dayjs().subtract(i, "month").format("YYYY-MM");
@@ -190,10 +193,13 @@ export const getDashboardAnalytics = actionClient
       );
       const patientData = monthlyPatients.find((item) => item.month === month);
 
+      const appointments = Number(appointmentData?.count) || 0;
+      const patients = Number(patientData?.count) || 0;
+
       monthlyData.push({
         month: monthName,
-        appointments: Number(appointmentData?.count) || 0,
-        patients: Number(patientData?.count) || 0,
+        appointments,
+        patients,
       });
     }
 
