@@ -44,19 +44,19 @@ export function PatientHeader({ session }: PatientHeaderProps) {
             <Image
               src={APP_CONFIG.logo.local}
               alt={APP_CONFIG.name}
-              width={120}
+              width={140}
               height={32}
-              className="h-8 w-auto"
+              className="h-12 w-auto"
             />
           </Link>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm font-bold text-gray-700">
             Portal do Paciente - {session.patient.clinic.name}
           </div>
         </div>
 
         {/* User Menu */}
         <div className="flex items-center space-x-4">
-          <span className="text-sm text-gray-700">
+          <span className="text-sm font-bold text-gray-700">
             Olá, {session.patient.name.split(" ")[0]}
           </span>
 
