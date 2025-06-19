@@ -34,7 +34,6 @@ export function useNotifications({
       },
       onError: ({ error }) => {
         toast.error("Erro ao carregar notificações");
-        console.error("❌ Erro ao carregar notificações:", error);
       },
     });
 
@@ -47,7 +46,7 @@ export function useNotifications({
         }
       },
       onError: ({ error }) => {
-        console.error("❌ Erro ao carregar contador:", error);
+        toast.error("Erro ao carregar contador de notificações");
       },
     },
   );
@@ -68,7 +67,6 @@ export function useNotifications({
       },
       onError: ({ error }) => {
         toast.error("Erro ao marcar notificação como lida");
-        console.error("❌ Erro ao marcar como lida:", error);
       },
     },
   );
@@ -87,7 +85,6 @@ export function useNotifications({
       },
       onError: ({ error }) => {
         toast.error("Erro ao marcar todas as notificações como lidas");
-        console.error("❌ Erro ao marcar todas como lidas:", error);
       },
     },
   );
@@ -108,7 +105,6 @@ export function useNotifications({
       },
       onError: ({ error }) => {
         toast.error("Erro ao remover notificação");
-        console.error("❌ Erro ao remover notificação:", error);
       },
     },
   );

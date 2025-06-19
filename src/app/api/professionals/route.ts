@@ -28,7 +28,6 @@ export async function GET() {
 
     return NextResponse.json(professionals);
   } catch (error) {
-    console.error("Erro ao buscar profissionais:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 },

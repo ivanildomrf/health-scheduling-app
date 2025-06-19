@@ -44,7 +44,6 @@ export const getNotifications = actionClient
         data: notifications,
       };
     } catch (error) {
-      console.error("❌ getNotifications - Erro:", error);
       throw new Error("Erro ao buscar notificações");
     }
   });

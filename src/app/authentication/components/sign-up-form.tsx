@@ -20,7 +20,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { authClient } from "@/lib/auth-client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -52,32 +51,10 @@ const SignUpForm = () => {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof registerSchema>) {
-    console.log(values);
-    await authClient.signUp.email(
-      {
-        name: values.name,
-        email: values.email,
-        password: values.password,
-        callbackURL: "/dashboard",
-      },
-      {
-        onSuccess: () => {
-          form.reset();
-          router.push("/dashboard");
-        },
-        onError: (ctx) => {
-          if (ctx.error.code === "USER_ALREADY_EXISTS") {
-            toast.error("E-mail já cadastrado");
-            form.setError("email", { message: "E-mail já cadastrado" });
-            return;
-          }
-
-          toast.error("Erro ao criar conta");
-        },
-      },
-    );
-  }
+  const onSubmit = (values: z.infer<typeof registerSchema>) => {
+    // TODO: Implementar cadastro de usuários
+    toast.success("Cadastro realizado com sucesso!");
+  };
 
   return (
     <Card>

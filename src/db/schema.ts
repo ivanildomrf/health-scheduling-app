@@ -175,6 +175,18 @@ export const patientsTable = pgTable("patients", {
   phone: text("phone").notNull(),
   password: text("password").notNull(),
   sex: patientSexEnum("sex").notNull(),
+  cpf: text("cpf").unique(),
+  birthDate: timestamp("birth_date"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  emergencyContact: text("emergency_contact"),
+  emergencyPhone: text("emergency_phone"),
+  profileImageUrl: text("profile_image_url"),
+  isActive: boolean("is_active").default(true).notNull(),
+  lastLoginAt: timestamp("last_login_at"),
+  emailVerified: boolean("email_verified").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -189,6 +201,7 @@ export const patientsTableRelations = relations(
       references: [clinicsTable.id],
     }),
     appointments: many(appointmentsTable),
+    sessions: many(patientSessionsTable),
   }),
 );
 
@@ -379,6 +392,30 @@ export const emailAttachmentsRelations = relations(
     template: one(emailTemplatesTable, {
       fields: [emailAttachmentsTable.templateId],
       references: [emailTemplatesTable.id],
+    }),
+  }),
+);
+
+// Tabela de sessões para pacientes
+export const patientSessionsTable = pgTable("patient_sessions", {
+  id: text("id").primaryKey(),
+  expiresAt: timestamp("expires_at").notNull(),
+  token: text("token").notNull().unique(),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => patientsTable.id, { onDelete: "cascade" }),
+});
+
+export const patientSessionsTableRelations = relations(
+  patientSessionsTable,
+  ({ one }) => ({
+    patient: one(patientsTable, {
+      fields: [patientSessionsTable.patientId],
+      references: [patientsTable.id],
     }),
   }),
 );

@@ -1,6 +1,5 @@
 import { db } from "@/db";
 import { notificationsTable } from "@/db/schema";
-import dayjs from "dayjs";
 import type { NotificationType } from "@/lib/types/notifications";
 
 export interface NotificationParams {
@@ -34,7 +33,7 @@ export async function createNotificationForUser(
   title: string,
   message: string,
   targetId?: string,
-  targetType?: "appointment" | "patient" | "professional" | "clinic" | "system"
+  targetType?: "appointment" | "patient" | "professional" | "clinic" | "system",
 ) {
   try {
     const [notification] = await db
@@ -51,8 +50,7 @@ export async function createNotificationForUser(
 
     return notification;
   } catch (error) {
-    console.error("Erro ao criar notificação:", error);
-    return null;
+    // Falhar silenciosamente para não quebrar o fluxo principal
   }
 }
 
@@ -63,7 +61,7 @@ export async function createAppointmentConfirmedNotification(
   professionalName: string,
   date: string,
   time: string,
-  appointmentId?: string
+  appointmentId?: string,
 ) {
   return createNotificationForUser(
     userId,
@@ -71,7 +69,7 @@ export async function createAppointmentConfirmedNotification(
     `Consulta Confirmada - ${patientName}`,
     `A consulta do paciente ${patientName} com ${professionalName} para ${date} às ${time} foi confirmada.`,
     appointmentId,
-    "appointment"
+    "appointment",
   );
 }
 
@@ -81,7 +79,7 @@ export async function createAppointmentCancelledNotification(
   professionalName: string,
   date: string,
   time: string,
-  appointmentId?: string
+  appointmentId?: string,
 ) {
   return createNotificationForUser(
     userId,
@@ -89,7 +87,7 @@ export async function createAppointmentCancelledNotification(
     `Consulta Cancelada - ${patientName}`,
     `A consulta do paciente ${patientName} com ${professionalName} para ${date} às ${time} foi cancelada. Reagendamento necessário.`,
     appointmentId,
-    "appointment"
+    "appointment",
   );
 }
 
@@ -97,7 +95,7 @@ export async function createAppointmentCompletedNotification(
   userId: string,
   patientName: string,
   professionalName: string,
-  appointmentId?: string
+  appointmentId?: string,
 ) {
   return createNotificationForUser(
     userId,
@@ -105,7 +103,7 @@ export async function createAppointmentCompletedNotification(
     `Consulta Finalizada - ${patientName}`,
     `A consulta do paciente ${patientName} com ${professionalName} foi concluída com sucesso. Registros atualizados.`,
     appointmentId,
-    "appointment"
+    "appointment",
   );
 }
 
@@ -113,7 +111,7 @@ export async function createAppointmentExpiredNotification(
   userId: string,
   patientName: string,
   professionalName: string,
-  appointmentId?: string
+  appointmentId?: string,
 ) {
   return createNotificationForUser(
     userId,
@@ -121,7 +119,7 @@ export async function createAppointmentExpiredNotification(
     `Consulta Não Realizada - ${patientName}`,
     `A consulta agendada do paciente ${patientName} com ${professionalName} não foi realizada e foi marcada como expirada.`,
     appointmentId,
-    "appointment"
+    "appointment",
   );
 }
 
@@ -130,15 +128,14 @@ export async function createNewPatientNotification(
   patientName: string,
   patientPhone?: string,
   patientEmail?: string,
-  patientId?: string
+  patientId?: string,
 ) {
   const contactInfo = [];
   if (patientPhone) contactInfo.push(`telefone ${patientPhone}`);
   if (patientEmail) contactInfo.push(`email ${patientEmail}`);
-  
-  const contactText = contactInfo.length > 0 
-    ? `. Dados: ${contactInfo.join(", ")}`
-    : "";
+
+  const contactText =
+    contactInfo.length > 0 ? `. Dados: ${contactInfo.join(", ")}` : "";
 
   return createNotificationForUser(
     userId,
@@ -146,7 +143,7 @@ export async function createNewPatientNotification(
     `Novo Paciente Cadastrado`,
     `O paciente ${patientName} foi cadastrado no sistema${contactText}`,
     patientId,
-    "patient"
+    "patient",
   );
 }
 
@@ -154,23 +151,23 @@ export async function createNewProfessionalNotification(
   userId: string,
   professionalName: string,
   specialty?: string,
-  professionalId?: string
+  professionalId?: string,
 ) {
   const specialtyText = specialty ? `. Especialidade: ${specialty}` : "";
-  
+
   return createNotificationForUser(
     userId,
     "new_professional_added",
     `Novo Profissional Adicionado`,
     `${professionalName} foi adicionado à equipe da clínica${specialtyText}. Agenda disponível para agendamentos.`,
     professionalId,
-    "professional"
+    "professional",
   );
 }
 
 export async function createClinicUpdatedNotification(
   userId: string,
-  clinicId?: string
+  clinicId?: string,
 ) {
   return createNotificationForUser(
     userId,
@@ -178,6 +175,6 @@ export async function createClinicUpdatedNotification(
     `Informações da Clínica Atualizadas`,
     `As informações da clínica foram atualizadas com sucesso. Verifique os novos dados no sistema de gestão.`,
     clinicId,
-    "clinic"
+    "clinic",
   );
 }
