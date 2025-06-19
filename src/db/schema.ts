@@ -166,6 +166,7 @@ export const patientSexEnum = pgEnum("patient_sex", ["male", "female"]);
 export const patientsTable = pgTable("patients", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
+  socialName: text("social_name"),
   clinicId: uuid("clinic_id")
     .notNull()
     .references(() => clinicsTable.id, {

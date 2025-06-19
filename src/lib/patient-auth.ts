@@ -162,7 +162,10 @@ export class PatientAuth {
     patientId: string,
     data: {
       name?: string;
+      socialName?: string;
+      email?: string;
       phone?: string;
+      sex?: "male" | "female";
       cpf?: string;
       address?: string;
       city?: string;
@@ -173,6 +176,18 @@ export class PatientAuth {
     },
   ): Promise<boolean> {
     try {
+      // Se está atualizando email, verificar se já existe
+      if (data.email) {
+        const existingPatient = await db.query.patientsTable.findFirst({
+          where: eq(patientsTable.email, data.email),
+        });
+
+        // Se existe um paciente com esse email e não é o mesmo paciente
+        if (existingPatient && existingPatient.id !== patientId) {
+          throw new Error("Este email já está sendo usado por outro paciente");
+        }
+      }
+
       await db
         .update(patientsTable)
         .set({
@@ -183,6 +198,9 @@ export class PatientAuth {
 
       return true;
     } catch (error) {
+      if (error instanceof Error && error.message.includes("email")) {
+        throw error; // Re-lançar erro específico de email
+      }
       throw new Error("Erro ao atualizar perfil");
     }
   }

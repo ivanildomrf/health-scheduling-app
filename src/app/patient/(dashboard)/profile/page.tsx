@@ -60,6 +60,7 @@ export default async function PatientProfilePage() {
     columns: {
       id: true,
       name: true,
+      socialName: true,
       email: true,
       phone: true,
       cpf: true,
@@ -122,6 +123,11 @@ export default async function PatientProfilePage() {
                   <h2 className="text-xl font-semibold text-gray-900">
                     {patientData.name}
                   </h2>
+                  {patientData.socialName && (
+                    <p className="text-sm text-gray-500">
+                      Nome social: {patientData.socialName}
+                    </p>
+                  )}
                   <p className="text-gray-600">{patientData.email}</p>
                 </div>
               </div>
