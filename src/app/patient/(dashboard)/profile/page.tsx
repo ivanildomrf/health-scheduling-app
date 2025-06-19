@@ -10,6 +10,43 @@ import { PatientProfileForm } from "./components/patient-profile-form";
 // Forçar renderização dinâmica
 export const dynamic = "force-dynamic";
 
+// Funções para formatar dados
+const formatPhone = (phone: string | null) => {
+  if (!phone) return "";
+  // Remove tudo que não é número
+  const numbers = phone.replace(/\D/g, "");
+  // Aplica a máscara (11) 99999-9999
+  if (numbers.length === 11) {
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+  }
+  // Se não tem 11 dígitos, retorna como está
+  return phone;
+};
+
+const formatCPF = (cpf: string | null) => {
+  if (!cpf) return "";
+  // Remove tudo que não é número
+  const numbers = cpf.replace(/\D/g, "");
+  // Aplica a máscara 123.456.789-00
+  if (numbers.length === 11) {
+    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9)}`;
+  }
+  // Se não tem 11 dígitos, retorna como está
+  return cpf;
+};
+
+const formatCEP = (cep: string | null) => {
+  if (!cep) return "";
+  // Remove tudo que não é número
+  const numbers = cep.replace(/\D/g, "");
+  // Aplica a máscara 12345-678
+  if (numbers.length === 8) {
+    return `${numbers.slice(0, 5)}-${numbers.slice(5)}`;
+  }
+  // Se não tem 8 dígitos, retorna como está
+  return cep;
+};
+
 export default async function PatientProfilePage() {
   const session = await getPatientSession();
 
@@ -97,13 +134,62 @@ export default async function PatientProfilePage() {
 
                 <div>
                   <p className="text-sm font-medium text-gray-500">Telefone</p>
-                  <p className="text-gray-900">{patientData.phone}</p>
+                  <p className="text-gray-900">
+                    {formatPhone(patientData.phone)}
+                  </p>
                 </div>
 
                 {patientData.cpf && (
                   <div>
                     <p className="text-sm font-medium text-gray-500">CPF</p>
-                    <p className="text-gray-900">{patientData.cpf}</p>
+                    <p className="text-gray-900">
+                      {formatCPF(patientData.cpf)}
+                    </p>
+                  </div>
+                )}
+
+                {patientData.address && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Endereço
+                    </p>
+                    <p className="text-gray-900">{patientData.address}</p>
+                  </div>
+                )}
+
+                {patientData.city && patientData.state && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Cidade/Estado
+                    </p>
+                    <p className="text-gray-900">
+                      {patientData.city}, {patientData.state}
+                    </p>
+                  </div>
+                )}
+
+                {patientData.zipCode && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">CEP</p>
+                    <p className="text-gray-900">
+                      {formatCEP(patientData.zipCode)}
+                    </p>
+                  </div>
+                )}
+
+                {patientData.emergencyContact && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Contato de Emergência
+                    </p>
+                    <p className="text-gray-900">
+                      {patientData.emergencyContact}
+                    </p>
+                    {patientData.emergencyPhone && (
+                      <p className="text-sm text-gray-600">
+                        {formatPhone(patientData.emergencyPhone)}
+                      </p>
+                    )}
                   </div>
                 )}
 
