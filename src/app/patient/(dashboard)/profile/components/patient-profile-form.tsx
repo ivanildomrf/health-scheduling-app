@@ -1,7 +1,7 @@
 "use client";
 
 import { updatePatientProfile } from "@/actions/update-patient-profile";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
@@ -20,8 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { PatternFormat } from "react-number-format";
 import { toast } from "sonner";
@@ -254,9 +255,23 @@ interface PatientProfileFormProps {
   };
 }
 
+// Tipo para rastrear status de salvamento de cada campo
+type FieldSaveStatus = "idle" | "saving" | "saved" | "error";
+
+interface FieldStatus {
+  [fieldName: string]: FieldSaveStatus;
+}
+
 export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
+  const [fieldStatus, setFieldStatus] = useState<FieldStatus>({});
+  const [estados] = useState(ESTADOS_BRASILEIROS);
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [loadingMunicipios, setLoadingMunicipios] = useState(false);
+
+  // Estado para controlar salvamentos pendentes
+  const [pendingSaves, setPendingSaves] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -268,13 +283,13 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
       email: patientData.email,
       phone: patientData.phone,
       sex: patientData.sex,
-      gender: (patientData.gender as any) || "nao_informado",
+      gender: (patientData.gender as any) || undefined,
       birthDate: patientData.birthDate
         ? patientData.birthDate.toISOString().split("T")[0]
         : "",
-      raceColor: (patientData.raceColor as any) || "sem_informacao",
-      nationality: patientData.nationality || "brasileira",
-      birthCountry: patientData.birthCountry || "BR",
+      raceColor: (patientData.raceColor as any) || undefined,
+      nationality: patientData.nationality || "",
+      birthCountry: patientData.birthCountry || "",
       birthCity: patientData.birthCity || "",
       birthState: patientData.birthState || "",
       naturalizationDate: patientData.naturalizationDate
@@ -289,14 +304,14 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
         ? patientData.passportExpiryDate.toISOString().split("T")[0]
         : "",
       zipCode: patientData.zipCode || "",
-      addressType: (patientData.addressType as any) || "rua",
+      addressType: (patientData.addressType as any) || undefined,
       addressName: patientData.addressName || "",
       addressNumber: patientData.addressNumber || "",
       addressComplement: patientData.addressComplement || "",
       addressNeighborhood: patientData.addressNeighborhood || "",
       city: patientData.city || "",
       state: patientData.state || "",
-      country: patientData.country || "Brasil",
+      country: patientData.country || "",
       cpf: patientData.cpf || "",
       rgNumber: patientData.rgNumber || "",
       rgComplement: patientData.rgComplement || "",
@@ -307,10 +322,24 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
         : "",
       cnsNumber: patientData.cnsNumber || "",
       guardianName: patientData.guardianName || "",
-      guardianRelationship: (patientData.guardianRelationship as any) || "",
+      guardianRelationship:
+        (patientData.guardianRelationship as any) || undefined,
       guardianCpf: patientData.guardianCpf || "",
       emergencyContact: patientData.emergencyContact || "",
       emergencyPhone: patientData.emergencyPhone || "",
+    },
+  });
+
+  const updateProfileAction = useAction(updatePatientProfile, {
+    onSuccess: ({ data }) => {
+      if (data?.success) {
+        // Não mostrar toast para cada campo, apenas atualizar status visual
+      }
+    },
+    onError: ({ error }) => {
+      toast.error("Erro ao salvar", {
+        description: error.serverError || "Tente novamente",
+      });
     },
   });
 
@@ -349,18 +378,136 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
     }
   }, [form, buscarMunicipios]);
 
-  const updateProfileAction = useAction(updatePatientProfile, {
-    onSuccess: (result) => {
+  // Função para processar salvamentos em lote com debounce
+  const processPendingSaves = useCallback(async () => {
+    if (Object.keys(pendingSaves).length === 0 || isSaving) return;
+
+    setIsSaving(true);
+    const fieldsToSave = { ...pendingSaves };
+    setPendingSaves({});
+
+    // Marcar todos os campos como "saving"
+    Object.keys(fieldsToSave).forEach((fieldName) => {
+      setFieldStatus((prev) => ({ ...prev, [fieldName]: "saving" }));
+    });
+
+    try {
+      // Obter todos os valores atuais do formulário
+      const formData = form.getValues();
+
+      // Aplicar as mudanças pendentes
+      const updatedData = {
+        ...formData,
+        ...fieldsToSave,
+      };
+
+      console.log("Salvando campos em lote:", Object.keys(fieldsToSave));
+      console.log("Dados sendo enviados:", updatedData);
+
+      const result = await updateProfileAction.executeAsync({
+        patientId: patientData.id,
+        ...updatedData,
+      });
+
       if (result?.data?.success) {
-        toast.success("Perfil atualizado com sucesso!");
-      } else if (result?.data?.error) {
-        toast.error(result.data.error);
+        // Marcar todos os campos como "saved"
+        Object.keys(fieldsToSave).forEach((fieldName) => {
+          setFieldStatus((prev) => ({ ...prev, [fieldName]: "saved" }));
+        });
+
+        // Remover status "saved" após 2 segundos
+        setTimeout(() => {
+          Object.keys(fieldsToSave).forEach((fieldName) => {
+            setFieldStatus((prev) => ({ ...prev, [fieldName]: "idle" }));
+          });
+        }, 2000);
+      } else {
+        console.error("Erro ao salvar campos:", result?.data?.error);
+        Object.keys(fieldsToSave).forEach((fieldName) => {
+          setFieldStatus((prev) => ({ ...prev, [fieldName]: "error" }));
+        });
+        if (result?.data?.error) {
+          toast.error(result.data.error);
+        }
       }
+    } catch (error) {
+      console.error("Erro ao salvar campos:", error);
+      Object.keys(fieldsToSave).forEach((fieldName) => {
+        setFieldStatus((prev) => ({ ...prev, [fieldName]: "error" }));
+      });
+      toast.error("Erro ao salvar campos");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [pendingSaves, isSaving, form, updateProfileAction, patientData.id]);
+
+  // Função para agendar salvamento de um campo
+  const saveField = useCallback(
+    (fieldName: string, value: any) => {
+      // Adicionar o campo à fila de salvamentos pendentes
+      setPendingSaves((prev) => ({
+        ...prev,
+        [fieldName]: value,
+      }));
+
+      // Marcar campo como "saving" imediatamente para feedback visual
+      setFieldStatus((prev) => ({ ...prev, [fieldName]: "saving" }));
+
+      // Cancelar timeout anterior se existir
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      // Agendar processamento dos salvamentos após 500ms de inatividade
+      saveTimeoutRef.current = setTimeout(() => {
+        processPendingSaves();
+      }, 500);
     },
-    onError: () => {
-      toast.error("Erro ao atualizar perfil");
-    },
-  });
+    [processPendingSaves],
+  );
+
+  // Limpar timeout ao desmontar componente
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Componente para mostrar status de salvamento
+  const FieldStatusIndicator = ({ fieldName }: { fieldName: string }) => {
+    const status = fieldStatus[fieldName] || "idle";
+
+    switch (status) {
+      case "saving":
+        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+      case "saved":
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case "error":
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return null;
+    }
+  };
+
+  // Wrapper para campos com auto-save
+  const AutoSaveFormField = ({
+    name,
+    children,
+    onBlur,
+  }: {
+    name: string;
+    children: React.ReactNode;
+    onBlur?: () => void;
+  }) => (
+    <div className="relative">
+      {children}
+      <div className="absolute top-8 right-2">
+        <FieldStatusIndicator fieldName={name} />
+      </div>
+    </div>
+  );
 
   // Função para consultar CEP
   const consultarCEP = useCallback(
@@ -442,29 +589,40 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
   // Função para determinar nacionalidade baseada no país de nascimento
   const determinarNacionalidade = useCallback((paisCodigo: string) => {
     const nacionalidades: Record<string, string> = {
-      BR: "brasileira",
-      AR: "argentina",
-      BO: "boliviana",
-      CL: "chilena",
-      CO: "colombiana",
-      EC: "equatoriana",
-      GF: "francesa",
-      GY: "guianense",
-      PY: "paraguaia",
-      PE: "peruana",
-      SR: "surinamesa",
-      UY: "uruguaia",
-      VE: "venezuelana",
-      US: "americana",
-      CA: "canadense",
-      MX: "mexicana",
-      PT: "portuguesa",
-      ES: "espanhola",
-      IT: "italiana",
-      FR: "francesa",
-      DE: "alemã",
-      JP: "japonesa",
-      CN: "chinesa",
+      BR: "Brasileira",
+      AR: "Argentina",
+      BO: "Boliviana",
+      CL: "Chilena",
+      CO: "Colombiana",
+      EC: "Equadoriana",
+      GF: "Francesa",
+      GY: "Guianense",
+      PY: "Paraguaia",
+      PE: "Peruana",
+      SR: "Surinamesa",
+      UY: "Uruguaia",
+      VE: "Venezuelana",
+      US: "Americana",
+      CA: "Canadense",
+      MX: "Mexicana",
+      PT: "Portuguesa",
+      ES: "Espanhola",
+      IT: "Italiana",
+      FR: "Francesa",
+      DE: "Alemã",
+      JP: "Japonesa",
+      CN: "Chinesa",
+      RU: "Russa",
+      IN: "Indiana",
+      ID: "Indonésia",
+      MY: "Malasia",
+      PH: "Filipina",
+      TH: "Tailandesa",
+      VN: "Vietnamita",
+      ZA: "Africana",
+      ZM: "Zambiana",
+      ZW: "Zimbabuana",
+      OTHER: "Outra",
     };
     return nacionalidades[paisCodigo] || "estrangeira";
   }, []);
@@ -478,16 +636,25 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
   const birthCountry = form.watch("birthCountry");
   const isEstrangeiro = birthCountry && birthCountry !== "BR";
 
-  const onSubmit = (values: ProfileFormData) => {
-    updateProfileAction.execute({
-      patientId: patientData.id,
-      ...values,
-    });
-  };
-
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <div className="space-y-8">
+        {/* Header com informação sobre auto-save */}
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-blue-600" />
+            <div>
+              <h3 className="font-medium text-blue-900">
+                Salvamento Automático
+              </h3>
+              <p className="text-sm text-blue-700">
+                Suas alterações são salvas automaticamente quando você sai de
+                cada campo.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Seção 1: Dados Básicos de Identificação */}
         <Card>
           <CardHeader>
@@ -495,67 +662,82 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome Completo *</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        disabled={updateProfileAction.isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <AutoSaveFormField name="name">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome Completo *</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            saveField("name", e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
 
-              <FormField
-                control={form.control}
-                name="socialName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome Social/Apelido</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="Nome pelo qual prefere ser chamado"
-                        disabled={updateProfileAction.isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <AutoSaveFormField name="socialName">
+                <FormField
+                  control={form.control}
+                  name="socialName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome Social/Apelido</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Nome pelo qual prefere ser chamado"
+                          onBlur={(e) => {
+                            field.onBlur();
+                            saveField("socialName", e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="motherName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome da Mãe</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        disabled={
-                          updateProfileAction.isPending ||
-                          form.watch("motherUnknown")
-                        }
-                        placeholder={
-                          form.watch("motherUnknown")
-                            ? "Mãe desconhecida"
-                            : "Nome completo da mãe"
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <AutoSaveFormField name="motherName">
+                <FormField
+                  control={form.control}
+                  name="motherName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome da Mãe</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          disabled={form.watch("motherUnknown")}
+                          placeholder={
+                            form.watch("motherUnknown")
+                              ? "Mãe desconhecida"
+                              : "Nome completo da mãe"
+                          }
+                          onBlur={(e) => {
+                            field.onBlur();
+                            if (!form.watch("motherUnknown")) {
+                              saveField("motherName", e.target.value);
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
 
               <FormField
                 control={form.control}
@@ -571,8 +753,8 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                           if (e.target.checked) {
                             form.setValue("motherName", "");
                           }
+                          saveField("motherUnknown", e.target.checked);
                         }}
-                        disabled={updateProfileAction.isPending}
                         className="mt-1"
                       />
                     </FormControl>
@@ -590,276 +772,161 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="sex"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sexo *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={updateProfileAction.isPending}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o sexo" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="male">Masculino</SelectItem>
-                        <SelectItem value="female">Feminino</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="gender"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Gênero</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={updateProfileAction.isPending}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o gênero" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="cisgender">Cisgênero</SelectItem>
-                        <SelectItem value="transgenero">Transgênero</SelectItem>
-                        <SelectItem value="nao_binario">Não binário</SelectItem>
-                        <SelectItem value="outro">Outro</SelectItem>
-                        <SelectItem value="nao_informado">
-                          Não informado
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="birthDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Data de Nascimento</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="date"
-                        disabled={updateProfileAction.isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="raceColor"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Raça/Cor</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={updateProfileAction.isPending}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a raça/cor" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="branca">Branca</SelectItem>
-                        <SelectItem value="preta">Preta</SelectItem>
-                        <SelectItem value="parda">Parda</SelectItem>
-                        <SelectItem value="amarela">Amarela</SelectItem>
-                        <SelectItem value="indigena">Indígena</SelectItem>
-                        <SelectItem value="sem_informacao">
-                          Sem informação
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Seção 2: Dados de Nacionalidade */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Dados de Nacionalidade</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="birthCountry"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>País de Nascimento</FormLabel>
-                    <Select
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        // Atualizar nacionalidade automaticamente
-                        const nacionalidade = determinarNacionalidade(value);
-                        form.setValue("nationality", nacionalidade);
-                      }}
-                      value={field.value}
-                      disabled={updateProfileAction.isPending}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o país" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {PAISES.map((pais) => (
-                          <SelectItem key={pais.value} value={pais.value}>
-                            {pais.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="nationality"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nacionalidade</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        disabled={true}
-                        placeholder="Determinada automaticamente"
-                        className="bg-gray-50"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {isEstrangeiro && (
-              <>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="birthCity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cidade de Nascimento</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            disabled={updateProfileAction.isPending}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="birthState"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Estado/Província de Nascimento</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            disabled={updateProfileAction.isPending}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
+              <AutoSaveFormField name="sex">
                 <FormField
                   control={form.control}
-                  name="naturalizationDate"
+                  name="sex"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        Data de Naturalização (se aplicável)
-                      </FormLabel>
+                      <FormLabel>Sexo *</FormLabel>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          saveField("sex", value);
+                        }}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o sexo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="male">Masculino</SelectItem>
+                          <SelectItem value="female">Feminino</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
+
+              <AutoSaveFormField name="gender">
+                <FormField
+                  control={form.control}
+                  name="gender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gênero</FormLabel>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          saveField("gender", value);
+                        }}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o gênero" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="cisgender">Cisgênero</SelectItem>
+                          <SelectItem value="transgenero">
+                            Transgênero
+                          </SelectItem>
+                          <SelectItem value="nao_binario">
+                            Não binário
+                          </SelectItem>
+                          <SelectItem value="outro">Outro</SelectItem>
+                          <SelectItem value="nao_informado">
+                            Não informado
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <AutoSaveFormField name="birthDate">
+                <FormField
+                  control={form.control}
+                  name="birthDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data de Nascimento</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
                           type="date"
-                          disabled={updateProfileAction.isPending}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            saveField("birthDate", e.target.value);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </>
-            )}
+              </AutoSaveFormField>
+
+              <AutoSaveFormField name="raceColor">
+                <FormField
+                  control={form.control}
+                  name="raceColor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Raça/Cor</FormLabel>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          saveField("raceColor", value);
+                        }}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="branca">Branca</SelectItem>
+                          <SelectItem value="preta">Preta</SelectItem>
+                          <SelectItem value="parda">Parda</SelectItem>
+                          <SelectItem value="amarela">Amarela</SelectItem>
+                          <SelectItem value="indigena">Indígena</SelectItem>
+                          <SelectItem value="sem_informacao">
+                            Sem informação
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Seção 3: Documentos para Estrangeiros */}
-        {isEstrangeiro && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Documentos para Estrangeiros</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {/* Seção 2: Nacionalidade e Origem */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Nacionalidade e Origem</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <AutoSaveFormField name="birthCountry">
                 <FormField
                   control={form.control}
-                  name="passportNumber"
+                  name="birthCountry"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Número do Passaporte</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={updateProfileAction.isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="passportCountry"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>País Emissor do Passaporte</FormLabel>
+                      <FormLabel>País de Nascimento</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          const nacionalidade = determinarNacionalidade(value);
+                          form.setValue("nationality", nacionalidade);
+                          saveField("birthCountry", value);
+                        }}
                         value={field.value}
-                        disabled={updateProfileAction.isPending}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -867,55 +934,261 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {PAISES.map((pais) => (
-                            <SelectItem key={pais.value} value={pais.value}>
-                              {pais.label}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="BR">Brasil</SelectItem>
+                          <SelectItem value="US">Estados Unidos</SelectItem>
+                          <SelectItem value="AR">Argentina</SelectItem>
+                          <SelectItem value="UY">Uruguai</SelectItem>
+                          <SelectItem value="PY">Paraguai</SelectItem>
+                          <SelectItem value="BO">Bolívia</SelectItem>
+                          <SelectItem value="PE">Peru</SelectItem>
+                          <SelectItem value="CO">Colômbia</SelectItem>
+                          <SelectItem value="VE">Venezuela</SelectItem>
+                          <SelectItem value="CL">Chile</SelectItem>
+                          <SelectItem value="EC">Equador</SelectItem>
+                          <SelectItem value="GY">Guiana</SelectItem>
+                          <SelectItem value="SR">Suriname</SelectItem>
+                          <SelectItem value="GF">Guiana Francesa</SelectItem>
+                          <SelectItem value="PT">Portugal</SelectItem>
+                          <SelectItem value="ES">Espanha</SelectItem>
+                          <SelectItem value="IT">Itália</SelectItem>
+                          <SelectItem value="DE">Alemanha</SelectItem>
+                          <SelectItem value="FR">França</SelectItem>
+                          <SelectItem value="JP">Japão</SelectItem>
+                          <SelectItem value="CN">China</SelectItem>
+                          <SelectItem value="OTHER">Outro</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              </AutoSaveFormField>
+
+              <AutoSaveFormField name="nationality">
+                <FormField
+                  control={form.control}
+                  name="nationality"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nacionalidade</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          disabled
+                          placeholder="Determinada automaticamente"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
+            </div>
+
+            {isEstrangeiro && (
+              <>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <AutoSaveFormField name="birthCity">
+                    <FormField
+                      control={form.control}
+                      name="birthCity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cidade de Nascimento</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              onBlur={(e) => {
+                                field.onBlur();
+                                saveField("birthCity", e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </AutoSaveFormField>
+
+                  <AutoSaveFormField name="birthState">
+                    <FormField
+                      control={form.control}
+                      name="birthState"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Estado/Província de Nascimento</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              onBlur={(e) => {
+                                field.onBlur();
+                                saveField("birthState", e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </AutoSaveFormField>
+                </div>
+
+                <AutoSaveFormField name="naturalizationDate">
+                  <FormField
+                    control={form.control}
+                    name="naturalizationDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Data de Naturalização (se aplicável)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="date"
+                            onBlur={(e) => {
+                              field.onBlur();
+                              saveField("naturalizationDate", e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AutoSaveFormField>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Seção 3: Dados do Passaporte */}
+        {isEstrangeiro && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Dados do Passaporte</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <AutoSaveFormField name="passportNumber">
+                  <FormField
+                    control={form.control}
+                    name="passportNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número do Passaporte</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            onBlur={(e) => {
+                              field.onBlur();
+                              saveField("passportNumber", e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AutoSaveFormField>
+
+                <AutoSaveFormField name="passportCountry">
+                  <FormField
+                    control={form.control}
+                    name="passportCountry"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>País Emissor do Passaporte</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            saveField("passportCountry", value);
+                          }}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o país emissor" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="BR">Brasil</SelectItem>
+                            <SelectItem value="US">Estados Unidos</SelectItem>
+                            <SelectItem value="AR">Argentina</SelectItem>
+                            <SelectItem value="UY">Uruguai</SelectItem>
+                            <SelectItem value="PY">Paraguai</SelectItem>
+                            <SelectItem value="BO">Bolívia</SelectItem>
+                            <SelectItem value="PE">Peru</SelectItem>
+                            <SelectItem value="CO">Colômbia</SelectItem>
+                            <SelectItem value="VE">Venezuela</SelectItem>
+                            <SelectItem value="CL">Chile</SelectItem>
+                            <SelectItem value="EC">Equador</SelectItem>
+                            <SelectItem value="GY">Guiana</SelectItem>
+                            <SelectItem value="SR">Suriname</SelectItem>
+                            <SelectItem value="GF">Guiana Francesa</SelectItem>
+                            <SelectItem value="PT">Portugal</SelectItem>
+                            <SelectItem value="ES">Espanha</SelectItem>
+                            <SelectItem value="IT">Itália</SelectItem>
+                            <SelectItem value="DE">Alemanha</SelectItem>
+                            <SelectItem value="FR">França</SelectItem>
+                            <SelectItem value="JP">Japão</SelectItem>
+                            <SelectItem value="CN">China</SelectItem>
+                            <SelectItem value="OTHER">Outro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AutoSaveFormField>
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="passportIssueDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data de Emissão</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="date"
-                          disabled={updateProfileAction.isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <AutoSaveFormField name="passportIssueDate">
+                  <FormField
+                    control={form.control}
+                    name="passportIssueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data de Emissão</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="date"
+                            onBlur={(e) => {
+                              field.onBlur();
+                              saveField("passportIssueDate", e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AutoSaveFormField>
 
-                <FormField
-                  control={form.control}
-                  name="passportExpiryDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data de Validade</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="date"
-                          disabled={updateProfileAction.isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <AutoSaveFormField name="passportExpiryDate">
+                  <FormField
+                    control={form.control}
+                    name="passportExpiryDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data de Validade</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="date"
+                            onBlur={(e) => {
+                              field.onBlur();
+                              saveField("passportExpiryDate", e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AutoSaveFormField>
               </div>
             </CardContent>
           </Card>
@@ -927,50 +1200,59 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
             <CardTitle>Dados de Contato</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Principal *</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="email"
-                      placeholder="usuario@email.com"
-                      disabled={updateProfileAction.isPending}
-                      autoComplete="email"
-                      inputMode="email"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <AutoSaveFormField name="email">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Principal *</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="email"
+                        placeholder="usuario@email.com"
+                        autoComplete="email"
+                        inputMode="email"
+                        onBlur={(e) => {
+                          field.onBlur();
+                          saveField("email", e.target.value);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </AutoSaveFormField>
 
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Telefone *</FormLabel>
-                  <FormControl>
-                    <PatternFormat
-                      format="(##) #####-####"
-                      mask="_"
-                      customInput={Input}
-                      placeholder="(11) 99999-9999"
-                      disabled={updateProfileAction.isPending}
-                      value={field.value}
-                      onValueChange={(values) => {
-                        field.onChange(values.formattedValue);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <AutoSaveFormField name="phone">
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone *</FormLabel>
+                    <FormControl>
+                      <PatternFormat
+                        format="(##) #####-####"
+                        mask="_"
+                        customInput={Input}
+                        placeholder="(11) 99999-9999"
+                        value={field.value}
+                        onValueChange={(values) => {
+                          field.onChange(values.formattedValue);
+                        }}
+                        onBlur={() => {
+                          saveField("phone", field.value);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </AutoSaveFormField>
           </CardContent>
         </Card>
 
@@ -982,28 +1264,188 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
           <CardContent className="space-y-4">
             {/* CEP com consulta automática */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <AutoSaveFormField name="zipCode">
+                <FormField
+                  control={form.control}
+                  name="zipCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CEP</FormLabel>
+                      <FormControl>
+                        <PatternFormat
+                          format="#####-###"
+                          mask="_"
+                          customInput={Input}
+                          placeholder="12345-678"
+                          value={field.value}
+                          onValueChange={(values) => {
+                            field.onChange(values.formattedValue);
+                            if (
+                              values.formattedValue &&
+                              values.formattedValue.length === 9
+                            ) {
+                              consultarCEP(values.formattedValue);
+                            }
+                          }}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            saveField("zipCode", e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
+
+              <AutoSaveFormField name="country">
+                <FormField
+                  control={form.control}
+                  name="country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>País</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            saveField("country", e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
+            </div>
+
+            {/* Tipo e nome do logradouro */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <AutoSaveFormField name="addressName">
+                <FormField
+                  control={form.control}
+                  name="addressName"
+                  render={({ field }) => (
+                    <FormItem className="w-full md:col-span-2">
+                      <FormLabel>Nome do Logradouro</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Ex: Rua das Flores"
+                          onBlur={(e) => {
+                            field.onBlur();
+                            saveField("addressName", e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
+              <AutoSaveFormField name="addressType">
+                <FormField
+                  control={form.control}
+                  name="addressType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Logradouro</FormLabel>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          saveField("addressType", value);
+                        }}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="rua">Rua</SelectItem>
+                          <SelectItem value="avenida">Avenida</SelectItem>
+                          <SelectItem value="travessa">Travessa</SelectItem>
+                          <SelectItem value="alameda">Alameda</SelectItem>
+                          <SelectItem value="praca">Praça</SelectItem>
+                          <SelectItem value="estrada">Estrada</SelectItem>
+                          <SelectItem value="rodovia">Rodovia</SelectItem>
+                          <SelectItem value="outro">Outro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
+            </div>
+
+            {/* Número e complemento */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <AutoSaveFormField name="addressNumber">
+                <FormField
+                  control={form.control}
+                  name="addressNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="123"
+                          onBlur={(e) => {
+                            field.onBlur();
+                            saveField("addressNumber", e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
+
+              <AutoSaveFormField name="addressComplement">
+                <FormField
+                  control={form.control}
+                  name="addressComplement"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Complemento</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Apto 45, Bloco B"
+                          onBlur={(e) => {
+                            field.onBlur();
+                            saveField("addressComplement", e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
+            </div>
+
+            {/* Bairro */}
+            <AutoSaveFormField name="addressNeighborhood">
               <FormField
                 control={form.control}
-                name="zipCode"
+                name="addressNeighborhood"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>CEP</FormLabel>
+                    <FormLabel>Bairro</FormLabel>
                     <FormControl>
-                      <PatternFormat
-                        format="#####-###"
-                        mask="_"
-                        customInput={Input}
-                        placeholder="12345-678"
-                        disabled={updateProfileAction.isPending}
-                        value={field.value}
-                        onValueChange={(values) => {
-                          field.onChange(values.formattedValue);
-                          if (
-                            values.formattedValue &&
-                            values.formattedValue.length === 9
-                          ) {
-                            consultarCEP(values.formattedValue);
-                          }
+                      <Input
+                        {...field}
+                        onBlur={(e) => {
+                          field.onBlur();
+                          saveField("addressNeighborhood", e.target.value);
                         }}
                       />
                     </FormControl>
@@ -1011,211 +1453,82 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                   </FormItem>
                 )}
               />
-
-              <FormField
-                control={form.control}
-                name="country"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>País</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        disabled={updateProfileAction.isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Tipo e nome do logradouro */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <FormField
-                control={form.control}
-                name="addressName"
-                render={({ field }) => (
-                  <FormItem className="w-full md:col-span-2">
-                    <FormLabel>Nome do Logradouro</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="Ex: Rua das Flores"
-                        disabled={updateProfileAction.isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="addressType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de Logradouro</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={updateProfileAction.isPending}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Tipo" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="rua">Rua</SelectItem>
-                        <SelectItem value="avenida">Avenida</SelectItem>
-                        <SelectItem value="travessa">Travessa</SelectItem>
-                        <SelectItem value="alameda">Alameda</SelectItem>
-                        <SelectItem value="praca">Praça</SelectItem>
-                        <SelectItem value="estrada">Estrada</SelectItem>
-                        <SelectItem value="rodovia">Rodovia</SelectItem>
-                        <SelectItem value="outro">Outro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Número e complemento */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="addressNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Número</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="123"
-                        disabled={updateProfileAction.isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="addressComplement"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Complemento</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="Apto 45, Bloco B"
-                        disabled={updateProfileAction.isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Bairro */}
-            <FormField
-              control={form.control}
-              name="addressNeighborhood"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Bairro/Distrito</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      disabled={updateProfileAction.isPending}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            </AutoSaveFormField>
 
             {/* Cidade e Estado */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="state"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unidade Federativa (UF)</FormLabel>
-                    <Select
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        // Limpar cidade quando mudar o estado
-                        form.setValue("city", "");
-                        // Buscar municípios do novo estado
-                        buscarMunicipios(value);
-                      }}
-                      value={field.value}
-                      disabled={updateProfileAction.isPending}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o estado" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {ESTADOS_BRASILEIROS.map((estado) => (
-                          <SelectItem key={estado.value} value={estado.value}>
-                            {estado.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <AutoSaveFormField name="state">
+                <FormField
+                  control={form.control}
+                  name="state"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estado</FormLabel>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          // Limpar município quando mudar estado
+                          form.setValue("city", "");
+                          // Buscar municípios do novo estado
+                          buscarMunicipios(value);
+                          saveField("state", value);
+                        }}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o estado" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {estados.map((estado) => (
+                            <SelectItem key={estado.value} value={estado.value}>
+                              {estado.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
 
-              <FormField
-                control={form.control}
-                name="city"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Município</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={
-                        updateProfileAction.isPending ||
-                        loadingMunicipios ||
-                        !form.getValues("state")
-                      }
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={
-                              !form.getValues("state")
-                                ? "Selecione primeiro o estado"
-                                : loadingMunicipios
-                                  ? "Carregando municípios..."
-                                  : "Selecione o município"
-                            }
-                          />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {municipios.map((municipio) => (
-                          <SelectItem key={municipio.id} value={municipio.nome}>
-                            {municipio.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <AutoSaveFormField name="city">
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Município</FormLabel>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          saveField("city", value);
+                        }}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o município" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {municipios.map((municipio) => (
+                            <SelectItem
+                              key={municipio.id}
+                              value={municipio.nome}
+                            >
+                              {municipio.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
             </div>
           </CardContent>
         </Card>
@@ -1227,163 +1540,198 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="cpf"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>CPF</FormLabel>
-                    <FormControl>
-                      <PatternFormat
-                        format="###.###.###-##"
-                        mask="_"
-                        customInput={Input}
-                        placeholder="123.456.789-00"
-                        disabled={updateProfileAction.isPending}
-                        value={field.value}
-                        onValueChange={(values) => {
-                          field.onChange(values.formattedValue);
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <AutoSaveFormField name="cpf">
+                <FormField
+                  control={form.control}
+                  name="cpf"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CPF</FormLabel>
+                      <FormControl>
+                        <PatternFormat
+                          format="###.###.###-##"
+                          mask="_"
+                          customInput={Input}
+                          placeholder="123.456.789-00"
+                          value={field.value}
+                          onValueChange={(values) => {
+                            field.onChange(values.formattedValue);
+                          }}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            saveField("cpf", e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
 
-              <FormField
-                control={form.control}
-                name="cnsNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cartão Nacional de Saúde (CNS)</FormLabel>
-                    <FormControl>
-                      <PatternFormat
-                        format="### #### #### ####"
-                        mask="_"
-                        customInput={Input}
-                        placeholder="123 4567 8901 2345"
-                        disabled={updateProfileAction.isPending}
-                        value={field.value}
-                        onValueChange={(values) => {
-                          field.onChange(values.formattedValue);
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <AutoSaveFormField name="cnsNumber">
+                <FormField
+                  control={form.control}
+                  name="cnsNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cartão Nacional de Saúde (CNS)</FormLabel>
+                      <FormControl>
+                        <PatternFormat
+                          format="### #### #### ####"
+                          mask="_"
+                          customInput={Input}
+                          placeholder="123 4567 8901 2345"
+                          value={field.value}
+                          onValueChange={(values) => {
+                            field.onChange(values.formattedValue);
+                          }}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            saveField("cnsNumber", e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
             </div>
 
-            {/* Campos do RG */}
-            <div className="border-t pt-4">
-              <h4 className="mb-3 text-sm font-medium text-gray-900">
-                Registro de Identidade (RG)
-              </h4>
+            {/* RG/Identidade */}
+            <div className="space-y-4">
+              <h4 className="font-medium text-gray-900">RG/Identidade</h4>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <FormField
-                  control={form.control}
-                  name="rgNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Número do RG</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={updateProfileAction.isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="rgComplement"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Complemento</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="Ex: X"
-                          disabled={updateProfileAction.isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="rgState"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>UF Emissor</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={updateProfileAction.isPending}
-                      >
+                <AutoSaveFormField name="rgNumber">
+                  <FormField
+                    control={form.control}
+                    name="rgNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número do RG</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="UF" />
-                          </SelectTrigger>
+                          <Input
+                            {...field}
+                            onBlur={(e) => {
+                              field.onBlur();
+                              saveField("rgNumber", e.target.value);
+                            }}
+                          />
                         </FormControl>
-                        <SelectContent>
-                          {ESTADOS_BRASILEIROS.map((estado) => (
-                            <SelectItem key={estado.value} value={estado.value}>
-                              {estado.value}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AutoSaveFormField>
+
+                <AutoSaveFormField name="rgComplement">
+                  <FormField
+                    control={form.control}
+                    name="rgComplement"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Complemento</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="Ex: X"
+                            onBlur={(e) => {
+                              field.onBlur();
+                              saveField("rgComplement", e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AutoSaveFormField>
+
+                <AutoSaveFormField name="rgState">
+                  <FormField
+                    control={form.control}
+                    name="rgState"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>UF Emissor</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            saveField("rgState", value);
+                          }}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="UF" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {estados.map((estado) => (
+                              <SelectItem
+                                key={estado.value}
+                                value={estado.value}
+                              >
+                                {estado.value}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AutoSaveFormField>
               </div>
 
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="rgIssuer"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Órgão Emissor</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="Ex: SSP, DETRAN, PC"
-                          disabled={updateProfileAction.isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <AutoSaveFormField name="rgIssuer">
+                  <FormField
+                    control={form.control}
+                    name="rgIssuer"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Órgão Emissor</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="Ex: SSP, DETRAN, PC"
+                            onBlur={(e) => {
+                              field.onBlur();
+                              saveField("rgIssuer", e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AutoSaveFormField>
 
-                <FormField
-                  control={form.control}
-                  name="rgIssueDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data de Emissão</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="date"
-                          disabled={updateProfileAction.isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <AutoSaveFormField name="rgIssueDate">
+                  <FormField
+                    control={form.control}
+                    name="rgIssueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data de Emissão</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="date"
+                            onBlur={(e) => {
+                              field.onBlur();
+                              saveField("rgIssueDate", e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AutoSaveFormField>
               </div>
             </div>
           </CardContent>
@@ -1396,46 +1744,55 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="emergencyContact"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome do Contato</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        disabled={updateProfileAction.isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <AutoSaveFormField name="emergencyContact">
+                <FormField
+                  control={form.control}
+                  name="emergencyContact"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome do Contato</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            saveField("emergencyContact", e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
 
-              <FormField
-                control={form.control}
-                name="emergencyPhone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Telefone do Contato</FormLabel>
-                    <FormControl>
-                      <PatternFormat
-                        format="(##) #####-####"
-                        mask="_"
-                        customInput={Input}
-                        placeholder="(11) 99999-9999"
-                        disabled={updateProfileAction.isPending}
-                        value={field.value}
-                        onValueChange={(values) => {
-                          field.onChange(values.formattedValue);
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <AutoSaveFormField name="emergencyPhone">
+                <FormField
+                  control={form.control}
+                  name="emergencyPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Telefone do Contato</FormLabel>
+                      <FormControl>
+                        <PatternFormat
+                          format="(##) #####-####"
+                          mask="_"
+                          customInput={Input}
+                          placeholder="(11) 99999-9999"
+                          value={field.value}
+                          onValueChange={(values) => {
+                            field.onChange(values.formattedValue);
+                          }}
+                          onBlur={() => {
+                            saveField("emergencyPhone", field.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </AutoSaveFormField>
             </div>
           </CardContent>
         </Card>
@@ -1450,71 +1807,21 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="guardianName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Nome do Guardião/Representante Legal *
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        disabled={updateProfileAction.isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <AutoSaveFormField name="guardianName">
                 <FormField
                   control={form.control}
-                  name="guardianRelationship"
+                  name="guardianName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Grau de Parentesco/Relacionamento *</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={updateProfileAction.isPending}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o parentesco" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {GRAUS_PARENTESCO.map((grau) => (
-                            <SelectItem key={grau.value} value={grau.value}>
-                              {grau.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="guardianCpf"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CPF do Guardião *</FormLabel>
+                      <FormLabel>
+                        Nome do Guardião/Representante Legal *
+                      </FormLabel>
                       <FormControl>
-                        <PatternFormat
-                          format="###.###.###-##"
-                          mask="_"
-                          customInput={Input}
-                          placeholder="123.456.789-00"
-                          disabled={updateProfileAction.isPending}
-                          value={field.value}
-                          onValueChange={(values) => {
-                            field.onChange(values.formattedValue);
+                        <Input
+                          {...field}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            saveField("guardianName", e.target.value);
                           }}
                         />
                       </FormControl>
@@ -1522,24 +1829,141 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                     </FormItem>
                   )}
                 />
+              </AutoSaveFormField>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <AutoSaveFormField name="guardianRelationship">
+                  <FormField
+                    control={form.control}
+                    name="guardianRelationship"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Grau de Parentesco/Relacionamento *
+                        </FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            saveField("guardianRelationship", value);
+                          }}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o parentesco" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {GRAUS_PARENTESCO.map((grau) => (
+                              <SelectItem key={grau.value} value={grau.value}>
+                                {grau.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AutoSaveFormField>
+
+                <AutoSaveFormField name="guardianCpf">
+                  <FormField
+                    control={form.control}
+                    name="guardianCpf"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CPF do Guardião *</FormLabel>
+                        <FormControl>
+                          <PatternFormat
+                            format="###.###.###-##"
+                            mask="_"
+                            customInput={Input}
+                            placeholder="123.456.789-00"
+                            value={field.value}
+                            onValueChange={(values) => {
+                              field.onChange(values.formattedValue);
+                            }}
+                            onBlur={(e) => {
+                              field.onBlur();
+                              saveField("guardianCpf", e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AutoSaveFormField>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Botão de salvar */}
-        <div className="flex justify-end">
-          <Button
-            type="submit"
-            disabled={updateProfileAction.isPending}
-            className="min-w-32"
-          >
-            {updateProfileAction.isPending
-              ? "Salvando..."
-              : "Salvar Alterações"}
-          </Button>
+        {/* Status geral de salvamento */}
+        <div className="rounded-lg border bg-gray-50 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <span className="text-sm font-medium text-gray-900">
+                Perfil atualizado automaticamente
+              </span>
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              Auto-save ativo
+            </Badge>
+          </div>
         </div>
-      </form>
+
+        {/* Debug info - remover em produção */}
+        {process.env.NODE_ENV === "development" && (
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+            <h4 className="mb-2 font-medium text-yellow-900">
+              Debug Info (Dev Only)
+            </h4>
+            <div className="space-y-1 text-xs text-yellow-800">
+              <p>
+                <strong>Is Saving:</strong> {isSaving ? "Sim" : "Não"}
+              </p>
+              <p>
+                <strong>Pending Saves:</strong>{" "}
+                {Object.keys(pendingSaves).join(", ") || "Nenhum"}
+              </p>
+              <p>
+                <strong>Pending Values:</strong> {JSON.stringify(pendingSaves)}
+              </p>
+              <hr className="my-2" />
+              <p>
+                <strong>Gender:</strong>{" "}
+                {form.watch("gender") || "não definido"}
+              </p>
+              <p>
+                <strong>Race/Color:</strong>{" "}
+                {form.watch("raceColor") || "não definido"}
+              </p>
+              <p>
+                <strong>Nationality:</strong>{" "}
+                {form.watch("nationality") || "não definido"}
+              </p>
+              <p>
+                <strong>Birth Country:</strong>{" "}
+                {form.watch("birthCountry") || "não definido"}
+              </p>
+              <p>
+                <strong>Passport Number:</strong>{" "}
+                {form.watch("passportNumber") || "não definido"}
+              </p>
+              <p>
+                <strong>CPF:</strong> {form.watch("cpf") || "não definido"}
+              </p>
+              <p>
+                <strong>RG Number:</strong>{" "}
+                {form.watch("rgNumber") || "não definido"}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
     </Form>
   );
 }
