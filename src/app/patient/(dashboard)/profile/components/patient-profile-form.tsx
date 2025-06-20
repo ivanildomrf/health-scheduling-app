@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAction } from "next-safe-action/hooks";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { PatternFormat } from "react-number-format";
 import { toast } from "sonner";
@@ -57,6 +57,12 @@ const ESTADOS_BRASILEIROS = [
   { value: "SE", label: "Sergipe" },
   { value: "TO", label: "Tocantins" },
 ];
+
+// Interface para município
+interface Municipio {
+  id: number;
+  nome: string;
+}
 
 const profileSchema = z.object({
   // Dados básicos obrigatórios do CNS
@@ -144,6 +150,9 @@ interface PatientProfileFormProps {
 }
 
 export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  const [loadingMunicipios, setLoadingMunicipios] = useState(false);
+
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -172,6 +181,41 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
       emergencyPhone: patientData.emergencyPhone || "",
     },
   });
+
+  // Função para buscar municípios por UF
+  const buscarMunicipios = useCallback(async (uf: string) => {
+    if (!uf) {
+      setMunicipios([]);
+      return;
+    }
+
+    setLoadingMunicipios(true);
+    try {
+      const response = await fetch(
+        `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`,
+      );
+      const data: Municipio[] = await response.json();
+
+      // Ordenar municípios alfabeticamente
+      const municipiosOrdenados = data.sort((a, b) =>
+        a.nome.localeCompare(b.nome),
+      );
+      setMunicipios(municipiosOrdenados);
+    } catch (error) {
+      toast.error("Erro ao carregar municípios");
+      setMunicipios([]);
+    } finally {
+      setLoadingMunicipios(false);
+    }
+  }, []);
+
+  // Carregar municípios quando o componente montar (se já tiver UF selecionada)
+  useEffect(() => {
+    const currentState = form.getValues("state");
+    if (currentState) {
+      buscarMunicipios(currentState);
+    }
+  }, [form, buscarMunicipios]);
 
   const updateProfileAction = useAction(updatePatientProfile, {
     onSuccess: (result) => {
@@ -237,12 +281,17 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
         form.setValue("city", data.localidade || "");
         form.setValue("state", data.uf || "");
 
+        // Buscar municípios do estado se o UF foi preenchido
+        if (data.uf) {
+          await buscarMunicipios(data.uf);
+        }
+
         toast.success("Endereço preenchido automaticamente!");
       } catch (error) {
         toast.error("Erro ao consultar CEP");
       }
     },
-    [form],
+    [form, buscarMunicipios],
   );
 
   const onSubmit = (values: ProfileFormData) => {
@@ -510,6 +559,23 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <FormField
                 control={form.control}
+                name="addressName"
+                render={({ field }) => (
+                  <FormItem className="w-full md:col-span-2">
+                    <FormLabel>Nome do Logradouro</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Ex: Rua das Flores"
+                        disabled={updateProfileAction.isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="addressType"
                 render={({ field }) => (
                   <FormItem>
@@ -535,24 +601,6 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                         <SelectItem value="outro">Outro</SelectItem>
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="addressName"
-                render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel>Nome do Logradouro</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="Ex: Rua das Flores"
-                        disabled={updateProfileAction.isPending}
-                      />
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -620,29 +668,18 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FormField
                 control={form.control}
-                name="city"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Município</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        disabled={updateProfileAction.isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="state"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Unidade Federativa (UF)</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Limpar cidade quando mudar o estado
+                        form.setValue("city", "");
+                        // Buscar municípios do novo estado
+                        buscarMunicipios(value);
+                      }}
                       value={field.value}
                       disabled={updateProfileAction.isPending}
                     >
@@ -655,6 +692,47 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                         {ESTADOS_BRASILEIROS.map((estado) => (
                           <SelectItem key={estado.value} value={estado.value}>
                             {estado.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Município</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={
+                        updateProfileAction.isPending ||
+                        loadingMunicipios ||
+                        !form.getValues("state")
+                      }
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={
+                              !form.getValues("state")
+                                ? "Selecione primeiro o estado"
+                                : loadingMunicipios
+                                  ? "Carregando municípios..."
+                                  : "Selecione o município"
+                            }
+                          />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {municipios.map((municipio) => (
+                          <SelectItem key={municipio.id} value={municipio.nome}>
+                            {municipio.nome}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -705,10 +783,16 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                   <FormItem>
                     <FormLabel>Cartão Nacional de Saúde (CNS)</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
+                      <PatternFormat
+                        format="### #### #### ####"
+                        mask="_"
+                        customInput={Input}
                         placeholder="123 4567 8901 2345"
                         disabled={updateProfileAction.isPending}
+                        value={field.value}
+                        onValueChange={(values) => {
+                          field.onChange(values.formattedValue);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
