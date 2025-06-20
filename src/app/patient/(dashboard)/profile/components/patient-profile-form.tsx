@@ -674,6 +674,96 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
   const birthCountry = form.watch("birthCountry");
   const isEstrangeiro = birthCountry && birthCountry !== "BR";
 
+  // Função para verificar se há dados importantes de estrangeiro preenchidos
+  const hasImportantForeignerData = useCallback(() => {
+    const values = form.getValues();
+    return !!(
+      values.birthCity ||
+      values.birthState ||
+      values.naturalizationDate ||
+      values.passportNumber ||
+      values.passportCountry ||
+      values.passportIssueDate ||
+      values.passportExpiryDate
+    );
+  }, [form]);
+
+  // Função para limpar campos específicos de estrangeiros
+  const clearForeignerFields = useCallback(
+    (showConfirmation = true) => {
+      // Se há dados importantes e deve mostrar confirmação, perguntar ao usuário
+      if (showConfirmation && hasImportantForeignerData()) {
+        const confirmed = window.confirm(
+          "Você mudou o país de nascimento para Brasil. Isso irá limpar automaticamente os dados específicos de estrangeiros (passaporte, naturalização, etc.). Deseja continuar?",
+        );
+
+        if (!confirmed) {
+          // Se usuário cancelou, reverter o país para o valor anterior
+          // Isso será feito no componente que chama esta função
+          return false;
+        }
+      }
+
+      // Limpar campos de nascimento no exterior
+      form.setValue("birthCity", "");
+      form.setValue("birthState", "");
+      form.setValue("naturalizationDate", "");
+
+      // Limpar campos de passaporte
+      form.setValue("passportNumber", "");
+      form.setValue("passportCountry", "");
+      form.setValue("passportIssueDate", "");
+      form.setValue("passportExpiryDate", "");
+
+      // Salvar as limpezas
+      const fieldsToSave = {
+        birthCity: "",
+        birthState: "",
+        naturalizationDate: "",
+        passportNumber: "",
+        passportCountry: "",
+        passportIssueDate: "",
+        passportExpiryDate: "",
+      };
+
+      // Adicionar todos os campos limpos à fila de salvamento
+      setPendingSaves((prev) => ({
+        ...prev,
+        ...fieldsToSave,
+      }));
+
+      // Marcar que existem mudanças não salvas
+      setHasUnsavedChanges(true);
+
+      // Cancelar timeout anterior se existir
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      // Agendar processamento dos salvamentos
+      saveTimeoutRef.current = setTimeout(() => {
+        Object.keys(fieldsToSave).forEach((field) => {
+          setFieldStatus((prev) => ({ ...prev, [field]: "saving" }));
+        });
+        processPendingSaves();
+      }, 300);
+
+      toast.success("Campos de estrangeiro foram limpos automaticamente", {
+        description:
+          "Dados de passaporte, naturalização e nascimento no exterior foram removidos",
+      });
+      return true;
+    },
+    [
+      form,
+      hasImportantForeignerData,
+      setPendingSaves,
+      setHasUnsavedChanges,
+      saveTimeoutRef,
+      processPendingSaves,
+    ],
+  );
+
   return (
     <Form {...form}>
       {/* Indicador global de salvamento */}
@@ -963,9 +1053,26 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                       <FormLabel>País de Nascimento</FormLabel>
                       <Select
                         onValueChange={(value) => {
+                          const previousValue = field.value;
+
+                          // Se mudou de estrangeiro para Brasil, verificar se deve limpar campos
+                          if (
+                            previousValue &&
+                            previousValue !== "BR" &&
+                            value === "BR"
+                          ) {
+                            const shouldClear = clearForeignerFields(true);
+
+                            // Se usuário cancelou a limpeza, não mudar o país
+                            if (!shouldClear) {
+                              return; // Não atualizar o campo
+                            }
+                          }
+
                           field.onChange(value);
                           const nacionalidade = determinarNacionalidade(value);
                           form.setValue("nationality", nacionalidade);
+
                           saveField("birthCountry", value);
                         }}
                         value={field.value}
