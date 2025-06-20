@@ -1,6 +1,16 @@
 "use client";
 
 import { updatePatientProfile } from "@/actions/update-patient-profile";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -273,6 +283,20 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Estados para confirmação de sincronização de países
+  const [showCountrySyncDialog, setShowCountrySyncDialog] = useState(false);
+  const [pendingCountrySync, setPendingCountrySync] = useState<{
+    birthCountry: string;
+    countryName: string;
+  } | null>(null);
+
+  // Estados para confirmação de limpeza de campos de estrangeiro
+  const [showClearFieldsDialog, setShowClearFieldsDialog] = useState(false);
+  const [pendingBrazilChange, setPendingBrazilChange] = useState<{
+    newValue: string;
+    previousValue: string;
+  } | null>(null);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -756,15 +780,8 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
     (showConfirmation = true) => {
       // Se há dados importantes e deve mostrar confirmação, perguntar ao usuário
       if (showConfirmation && hasImportantForeignerData()) {
-        const confirmed = window.confirm(
-          "Você mudou o país de nascimento para Brasil. Isso irá limpar automaticamente os dados específicos de estrangeiros (passaporte, naturalização, etc.). Deseja continuar?",
-        );
-
-        if (!confirmed) {
-          // Se usuário cancelou, reverter o país para o valor anterior
-          // Isso será feito no componente que chama esta função
-          return false;
-        }
+        // Em vez de window.confirm, retornar false para mostrar o dialog
+        return false;
       }
 
       // Limpar campos de nascimento no exterior
@@ -826,6 +843,53 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
       processPendingSaves,
     ],
   );
+
+  // Função para confirmar sincronização de países
+  const handleConfirmCountrySync = () => {
+    if (pendingCountrySync) {
+      form.setValue("passportCountry", pendingCountrySync.birthCountry);
+      saveField("passportCountry", pendingCountrySync.birthCountry);
+
+      toast.success(
+        `País emissor do passaporte definido como ${pendingCountrySync.countryName}`,
+      );
+    }
+
+    setShowCountrySyncDialog(false);
+    setPendingCountrySync(null);
+  };
+
+  // Função para cancelar sincronização de países
+  const handleCancelCountrySync = () => {
+    setShowCountrySyncDialog(false);
+    setPendingCountrySync(null);
+  };
+
+  // Função para confirmar limpeza de campos de estrangeiro
+  const handleConfirmClearFields = () => {
+    if (pendingBrazilChange) {
+      // Limpar os campos
+      clearForeignerFields(false);
+
+      // Atualizar o país para Brasil
+      form.setValue("birthCountry", pendingBrazilChange.newValue);
+      const nacionalidade = determinarNacionalidade(
+        pendingBrazilChange.newValue,
+      );
+      form.setValue("nationality", nacionalidade);
+      saveField("birthCountry", pendingBrazilChange.newValue);
+    }
+
+    setShowClearFieldsDialog(false);
+    setPendingBrazilChange(null);
+  };
+
+  // Função para cancelar limpeza de campos de estrangeiro
+  const handleCancelClearFields = () => {
+    setShowClearFieldsDialog(false);
+    setPendingBrazilChange(null);
+    // Não fazer nada - manter o país anterior
+  };
 
   return (
     <Form {...form}>
@@ -1127,28 +1191,42 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                             previousValue !== "BR" &&
                             value === "BR"
                           ) {
-                            const shouldClear = clearForeignerFields(true);
-
-                            // Se usuário cancelou a limpeza, não mudar o país
-                            if (!shouldClear) {
-                              return; // Não atualizar o campo
+                            // Se há dados importantes, mostrar dialog de confirmação
+                            if (hasImportantForeignerData()) {
+                              setPendingBrazilChange({
+                                newValue: value,
+                                previousValue: previousValue,
+                              });
+                              setShowClearFieldsDialog(true);
+                              return; // Não atualizar o campo ainda
                             }
+
+                            // Se não há dados importantes, limpar automaticamente
+                            clearForeignerFields(false);
+
+                            // Se chegou aqui, usuário confirmou mudança para Brasil
+                            field.onChange(value);
+                            const nacionalidade =
+                              determinarNacionalidade(value);
+                            form.setValue("nationality", nacionalidade);
+                            saveField("birthCountry", value);
+                            return; // Sair da função, não executar lógica de país estrangeiro
                           }
 
+                          // Atualizar o campo normalmente
                           field.onChange(value);
                           const nacionalidade = determinarNacionalidade(value);
                           form.setValue("nationality", nacionalidade);
 
                           // Se selecionou um país estrangeiro (diferente do Brasil),
-                          // sincronizar com o país emissor do passaporte
+                          // perguntar se deve sincronizar com o país emissor do passaporte
                           if (value && value !== "BR") {
-                            form.setValue("passportCountry", value);
-                            saveField("passportCountry", value);
-
-                            // Mostrar mensagem informativa
-                            toast.success(
-                              `País emissor do passaporte foi automaticamente definido como ${getPaisNome(value)}`,
-                            );
+                            const countryName = getPaisNome(value);
+                            setPendingCountrySync({
+                              birthCountry: value,
+                              countryName: countryName,
+                            });
+                            setShowCountrySyncDialog(true);
                           }
 
                           saveField("birthCountry", value);
@@ -2190,6 +2268,66 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
           </div>
         )}
       </div>
+
+      {/* Dialog de confirmação para sincronização de países */}
+      <AlertDialog
+        open={showCountrySyncDialog}
+        onOpenChange={setShowCountrySyncDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sincronizar País do Passaporte</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você selecionou <strong>{pendingCountrySync?.countryName}</strong>{" "}
+              como país de nascimento.
+              <br />
+              <br />
+              Deseja definir automaticamente o mesmo país como{" "}
+              <strong>País Emissor do Passaporte</strong>?
+              <br />
+              <br />
+              <span className="text-muted-foreground text-sm">
+                Isso é recomendado pois normalmente o passaporte é emitido pelo
+                país de nascimento. Você pode alterar posteriormente se
+                necessário.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelCountrySync}>
+              Não, manter separado
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmCountrySync}>
+              Sim, sincronizar países
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog de confirmação para limpeza de campos de estrangeiro */}
+      <AlertDialog
+        open={showClearFieldsDialog}
+        onOpenChange={setShowClearFieldsDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Limpar Campos de Estrangeiro</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você mudou o país de nascimento para Brasil. Isso irá limpar
+              automaticamente os dados específicos de estrangeiros (passaporte,
+              naturalização, etc.). Deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelClearFields}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmClearFields}>
+              Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Form>
   );
 }
