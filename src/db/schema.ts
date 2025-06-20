@@ -163,27 +163,136 @@ export const professionalsTableRelations = relations(
 
 export const patientSexEnum = pgEnum("patient_sex", ["male", "female"]);
 
+export const raceColorEnum = pgEnum("race_color", [
+  "branca",
+  "preta",
+  "parda",
+  "amarela",
+  "indigena",
+  "sem_informacao",
+]);
+
+export const genderEnum = pgEnum("gender", [
+  "cisgender",
+  "transgenero",
+  "nao_binario",
+  "outro",
+  "nao_informado",
+]);
+
+export const phoneTypeEnum = pgEnum("phone_type", [
+  "residencial",
+  "comercial",
+  "celular",
+  "recado",
+]);
+
+export const addressTypeEnum = pgEnum("address_type", [
+  "rua",
+  "avenida",
+  "travessa",
+  "alameda",
+  "praca",
+  "estrada",
+  "rodovia",
+  "outro",
+]);
+
+export const relationshipEnum = pgEnum("relationship", [
+  "pai",
+  "mae",
+  "filho",
+  "filha",
+  "conjuge",
+  "companheiro",
+  "irmao",
+  "irma",
+  "avo",
+  "avo_feminino",
+  "tio",
+  "tia",
+  "primo",
+  "prima",
+  "cunhado",
+  "cunhada",
+  "sogro",
+  "sogra",
+  "genro",
+  "nora",
+  "tutor",
+  "curador",
+  "responsavel_legal",
+  "outro",
+]);
+
 export const patientsTable = pgTable("patients", {
   id: uuid("id").defaultRandom().primaryKey(),
+
+  // Dados básicos de identificação
   name: text("name").notNull(),
   socialName: text("social_name"),
+  motherName: text("mother_name"),
+  motherUnknown: boolean("mother_unknown").default(false),
+  sex: patientSexEnum("sex").notNull(),
+  gender: genderEnum("gender"),
+  birthDate: timestamp("birth_date"),
+  raceColor: raceColorEnum("race_color"),
+
+  // Dados de nacionalidade
+  nationality: text("nationality").default("brasileira"),
+  birthCity: text("birth_city"),
+  birthState: text("birth_state"),
+  birthCountry: text("birth_country").default("Brasil"),
+  naturalizationDate: timestamp("naturalization_date"),
+
+  // Documentos para estrangeiros
+  passportNumber: text("passport_number"),
+  passportCountry: text("passport_country"),
+  passportIssueDate: timestamp("passport_issue_date"),
+  passportExpiryDate: timestamp("passport_expiry_date"),
+
+  // Contato
+  email: text("email").notNull().unique(),
+  phoneType: phoneTypeEnum("phone_type").default("celular"),
+  phoneDdd: text("phone_ddd"),
+  phone: text("phone").notNull(),
+
+  // Endereço completo
+  addressType: addressTypeEnum("address_type"),
+  addressName: text("address_name"),
+  addressNumber: text("address_number"),
+  addressComplement: text("address_complement"),
+  addressNeighborhood: text("address_neighborhood"),
+  city: text("city"),
+  state: text("state"),
+  country: text("country").default("Brasil"),
+  zipCode: text("zip_code"),
+
+  // Documentos brasileiros
+  cpf: text("cpf").unique(),
+  rgNumber: text("rg_number"),
+  rgComplement: text("rg_complement"),
+  rgState: text("rg_state"),
+  rgIssuer: text("rg_issuer"),
+  rgIssueDate: timestamp("rg_issue_date"),
+  cnsNumber: text("cns_number").unique(),
+
+  // Guardião/Representante legal
+  guardianName: text("guardian_name"),
+  guardianRelationship: relationshipEnum("guardian_relationship"),
+  guardianCpf: text("guardian_cpf"),
+
+  // Contato de emergência (mantido para compatibilidade)
+  emergencyContact: text("emergency_contact"),
+  emergencyPhone: text("emergency_phone"),
+
+  // Dados do sistema
   clinicId: uuid("clinic_id")
     .notNull()
     .references(() => clinicsTable.id, {
       onDelete: "cascade",
     }),
-  email: text("email").notNull().unique(),
-  phone: text("phone").notNull(),
   password: text("password").notNull(),
-  sex: patientSexEnum("sex").notNull(),
-  cpf: text("cpf").unique(),
-  birthDate: timestamp("birth_date"),
-  address: text("address"),
-  city: text("city"),
-  state: text("state"),
-  zipCode: text("zip_code"),
-  emergencyContact: text("emergency_contact"),
-  emergencyPhone: text("emergency_phone"),
   profileImageUrl: text("profile_image_url"),
   isActive: boolean("is_active").default(true).notNull(),
   lastLoginAt: timestamp("last_login_at"),

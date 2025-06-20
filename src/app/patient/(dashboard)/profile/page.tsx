@@ -47,6 +47,37 @@ const formatCEP = (cep: string | null) => {
   return cep;
 };
 
+async function getPatientData(patientId: string) {
+  const patient = await db
+    .select({
+      id: patientsTable.id,
+      name: patientsTable.name,
+      socialName: patientsTable.socialName,
+      motherName: patientsTable.motherName,
+      email: patientsTable.email,
+      phone: patientsTable.phone,
+      sex: patientsTable.sex,
+      birthDate: patientsTable.birthDate,
+      raceColor: patientsTable.raceColor,
+      city: patientsTable.city,
+      state: patientsTable.state,
+      zipCode: patientsTable.zipCode,
+      cpf: patientsTable.cpf,
+      cnsNumber: patientsTable.cnsNumber,
+      emergencyContact: patientsTable.emergencyContact,
+      emergencyPhone: patientsTable.emergencyPhone,
+      clinic: {
+        id: patientsTable.clinicId,
+        name: patientsTable.name, // Placeholder - would need to join with clinics table
+      },
+    })
+    .from(patientsTable)
+    .where(eq(patientsTable.id, patientId))
+    .limit(1);
+
+  return patient[0] || null;
+}
+
 export default async function PatientProfilePage() {
   const session = await getPatientSession();
 
@@ -54,34 +85,7 @@ export default async function PatientProfilePage() {
     redirect("/patient/login");
   }
 
-  // Buscar dados completos do paciente
-  const patientData = await db.query.patientsTable.findFirst({
-    where: eq(patientsTable.id, session.patient.id),
-    columns: {
-      id: true,
-      name: true,
-      socialName: true,
-      email: true,
-      phone: true,
-      cpf: true,
-      birthDate: true,
-      sex: true,
-      address: true,
-      city: true,
-      state: true,
-      zipCode: true,
-      emergencyContact: true,
-      emergencyPhone: true,
-    },
-    with: {
-      clinic: {
-        columns: {
-          id: true,
-          name: true,
-        },
-      },
-    },
-  });
+  const patientData = await getPatientData(session.patientId);
 
   if (!patientData) {
     redirect("/patient/login");
@@ -94,7 +98,7 @@ export default async function PatientProfilePage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Meu Perfil</h1>
           <p className="mt-1 text-gray-600">
-            Gerencie suas informações pessoais
+            Gerencie suas informações pessoais e dados de contato
           </p>
         </div>
       </div>
@@ -151,15 +155,6 @@ export default async function PatientProfilePage() {
                     <p className="text-gray-900">
                       {formatCPF(patientData.cpf)}
                     </p>
-                  </div>
-                )}
-
-                {patientData.address && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">
-                      Endereço
-                    </p>
-                    <p className="text-gray-900">{patientData.address}</p>
                   </div>
                 )}
 
