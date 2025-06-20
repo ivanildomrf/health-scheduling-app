@@ -5,6 +5,7 @@ import { patientsTable } from "@/db/schema";
 import { createNewPatientNotification } from "@/helpers/notifications";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
+import { hash } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -35,41 +36,59 @@ export const upsertPatient = actionClient
 
     const isNewPatient = !existingPatient;
 
-    await db
-      .insert(patientsTable)
-      .values({
-        id: parsedInput.id,
-        clinicId: session.user.clinic.id,
-        name: parsedInput.name,
-        email: parsedInput.email,
-        phone: parsedInput.phone,
-        sex: parsedInput.sex,
-        password: "temp123", // Senha temporária - deve ser alterada em uma implementação real
-      })
-      .onConflictDoUpdate({
-        target: [patientsTable.id],
-        set: {
+    if (isNewPatient) {
+      // Criar novo paciente
+      const temporaryPassword = await hash("temp123", 12); // Senha temporária que será alterada
+
+      const result = await db
+        .insert(patientsTable)
+        .values({
+          clinicId: session.user.clinic.id,
           name: parsedInput.name,
           email: parsedInput.email,
           phone: parsedInput.phone,
           sex: parsedInput.sex,
-        },
-      });
+          password: temporaryPassword,
+          isActive: false, // Inativo até receber credenciais ou ativar conta
+        })
+        .returning();
 
-    // Criar notificação apenas para novos pacientes
-    if (isNewPatient) {
+      const savedPatient = result[0];
+
+      // Criar notificação para novo paciente
       await createNewPatientNotification(
         session.user.id,
         parsedInput.name,
         parsedInput.phone,
         parsedInput.email,
-        parsedInput.id,
+        savedPatient.id,
       );
+
+      revalidatePath("/patients");
+
+      return {
+        success: true,
+        patient: savedPatient,
+      };
+    } else {
+      // Atualizar paciente existente
+      const result = await db
+        .update(patientsTable)
+        .set({
+          name: parsedInput.name,
+          email: parsedInput.email,
+          phone: parsedInput.phone,
+          sex: parsedInput.sex,
+          updatedAt: new Date(),
+        })
+        .where(eq(patientsTable.id, parsedInput.id!))
+        .returning();
+
+      revalidatePath("/patients");
+
+      return {
+        success: true,
+        patient: result[0],
+      };
     }
-
-    revalidatePath("/patients");
-
-    return {
-      success: true,
-    };
   });

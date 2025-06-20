@@ -288,6 +288,11 @@ export const patientsTable = pgTable("patients", {
   isActive: boolean("is_active").default(true).notNull(),
   lastLoginAt: timestamp("last_login_at"),
   emailVerified: boolean("email_verified").default(false).notNull(),
+
+  // Campos para ativação de conta
+  activationToken: text("activation_token"),
+  activationTokenExpiresAt: timestamp("activation_token_expires_at"),
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

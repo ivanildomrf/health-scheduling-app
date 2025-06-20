@@ -27,8 +27,9 @@ import {
 } from "@/components/ui/select";
 import { patientsTable } from "@/db/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { UserPlus } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { PatternFormat } from "react-number-format";
 import { toast } from "sonner";
@@ -52,6 +53,12 @@ const UpsertPatientForm = ({
   onSuccess,
   isOpen,
 }: UpsertPatientFormProps) => {
+  const [savedPatientId, setSavedPatientId] = useState<string | null>(
+    patient?.id || null,
+  );
+  const [isSendingCredentials, setIsSendingCredentials] = useState(false);
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     shouldUnregister: true,
     resolver: zodResolver(formSchema),
@@ -66,18 +73,98 @@ const UpsertPatientForm = ({
   useEffect(() => {
     if (isOpen) {
       form.reset(patient);
+      setSavedPatientId(patient?.id || null);
     }
-  }, [isOpen]);
+  }, [isOpen, patient]);
 
   const upsertPatientAction = useAction(upsertPatient, {
-    onSuccess: () => {
+    onSuccess: ({ data }) => {
+      console.log("🎉 Sucesso ao salvar paciente:", data);
       toast.success("Paciente cadastrado com sucesso");
+
+      if (data && "patient" in data && data.patient?.id) {
+        console.log("✅ Definindo savedPatientId:", data.patient.id);
+        setSavedPatientId(data.patient.id);
+
+        // Se é um novo paciente (não estava editando), não fechar o dialog ainda
+        // para permitir envio de credenciais/convites
+        if (!patient?.id) {
+          console.log(
+            "📝 Novo paciente - mantendo dialog aberto para envio de emails",
+          );
+          // Não chamar onSuccess() ainda para manter o dialog aberto
+          return;
+        }
+      }
+
+      // Para edição de pacientes existentes, fechar normalmente
       onSuccess?.();
     },
     onError: (error) => {
+      console.error("❌ Erro ao salvar paciente:", error);
       toast.error("Erro ao cadastrar paciente");
     },
   });
+
+  const handleSendCredentials = async () => {
+    const patientId = savedPatientId || patient?.id;
+    if (!patientId) {
+      toast.error("Erro: ID do paciente não encontrado");
+      return;
+    }
+
+    setIsSendingCredentials(true);
+    try {
+      const response = await fetch("/api/patient/send-credentials", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ patientId }),
+      });
+
+      if (response.ok) {
+        toast.success("Credenciais enviadas com sucesso!");
+      } else {
+        toast.error("Erro ao enviar credenciais");
+      }
+    } catch (error) {
+      console.error("Erro ao enviar credenciais:", error);
+      toast.error("Erro ao enviar credenciais");
+    } finally {
+      setIsSendingCredentials(false);
+    }
+  };
+
+  const handleSendInvite = async () => {
+    const patientId = savedPatientId || patient?.id;
+    if (!patientId) {
+      toast.error("Erro: ID do paciente não encontrado");
+      return;
+    }
+
+    setIsSendingInvite(true);
+    try {
+      const response = await fetch("/api/patient/send-invite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ patientId }),
+      });
+
+      if (response.ok) {
+        toast.success("Convite enviado com sucesso!");
+      } else {
+        toast.error("Erro ao enviar convite");
+      }
+    } catch (error) {
+      console.error("Erro ao enviar convite:", error);
+      toast.error("Erro ao enviar convite");
+    } finally {
+      setIsSendingInvite(false);
+    }
+  };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     upsertPatientAction.execute({
@@ -169,10 +256,90 @@ const UpsertPatientForm = ({
               </FormItem>
             )}
           />
-          <DialogFooter>
-            <Button type="submit" disabled={upsertPatientAction.isPending}>
-              {upsertPatientAction.isPending ? "Salvando..." : "Salvar"}
-            </Button>
+          <DialogFooter className="flex-col gap-4">
+            {/* Botão principal de salvar - só aparece se não foi salvo ainda ou se está editando */}
+            {(!savedPatientId || patient?.id) && (
+              <Button
+                type="submit"
+                disabled={upsertPatientAction.isPending}
+                className="w-full"
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                {upsertPatientAction.isPending
+                  ? "Salvando..."
+                  : patient?.id
+                    ? "Atualizar Paciente"
+                    : "Salvar Paciente"}
+              </Button>
+            )}
+
+            {/* Seção de acesso ao portal - aparece após salvar OU se está editando paciente existente */}
+            {(savedPatientId || patient?.id) && (
+              <div className="w-full space-y-4 border-t border-gray-200 pt-4">
+                {/* Título da seção */}
+                <div className="text-center">
+                  <h4 className="mb-1 text-sm font-semibold text-gray-900">
+                    🌐 Acesso ao Portal do Paciente
+                  </h4>
+                  <p className="text-xs text-gray-600">
+                    {patient?.id
+                      ? "Reenvie credenciais ou convite se necessário:"
+                      : "Escolha como o paciente receberá acesso ao portal:"}
+                  </p>
+                </div>
+
+                {/* Botões de ação */}
+                <div className="space-y-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSendCredentials}
+                    disabled={isSendingCredentials}
+                    className="w-full justify-start"
+                  >
+                    <span className="mr-2 text-blue-600">🔐</span>
+                    {isSendingCredentials
+                      ? "Enviando..."
+                      : patient?.id
+                        ? "Reenviar Credenciais"
+                        : "Enviar Credenciais"}
+                    <span className="ml-auto text-xs text-gray-500">
+                      Email + senha temporária (cadastro presencial)
+                    </span>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSendInvite}
+                    disabled={isSendingInvite}
+                    className="w-full justify-start"
+                  >
+                    <span className="mr-2 text-green-600">📧</span>
+                    {isSendingInvite
+                      ? "Enviando..."
+                      : patient?.id
+                        ? "Reenviar Convite"
+                        : "Enviar Convite"}
+                    <span className="ml-auto text-xs text-gray-500">
+                      Link para o paciente definir própria senha
+                    </span>
+                  </Button>
+                </div>
+
+                {/* Botão finalizar - só aparece para novos pacientes */}
+                {!patient?.id && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => onSuccess?.()}
+                    className="w-full"
+                  >
+                    Finalizar Cadastro
+                  </Button>
+                )}
+              </div>
+            )}
           </DialogFooter>
         </form>
       </Form>
