@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/db";
-import { patientsTable } from "@/db/schema";
+import { clinicsTable, patientsTable } from "@/db/schema";
 import { getPatientSession } from "@/helpers/patient-session";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -59,23 +59,44 @@ async function getPatientData(patientId: string) {
       sex: patientsTable.sex,
       birthDate: patientsTable.birthDate,
       raceColor: patientsTable.raceColor,
+      zipCode: patientsTable.zipCode,
+      addressType: patientsTable.addressType,
+      addressName: patientsTable.addressName,
+      addressNumber: patientsTable.addressNumber,
+      addressComplement: patientsTable.addressComplement,
+      addressNeighborhood: patientsTable.addressNeighborhood,
       city: patientsTable.city,
       state: patientsTable.state,
-      zipCode: patientsTable.zipCode,
+      country: patientsTable.country,
       cpf: patientsTable.cpf,
       cnsNumber: patientsTable.cnsNumber,
       emergencyContact: patientsTable.emergencyContact,
       emergencyPhone: patientsTable.emergencyPhone,
-      clinic: {
-        id: patientsTable.clinicId,
-        name: patientsTable.name, // Placeholder - would need to join with clinics table
-      },
+      clinicId: patientsTable.clinicId,
     })
     .from(patientsTable)
     .where(eq(patientsTable.id, patientId))
     .limit(1);
 
-  return patient[0] || null;
+  if (!patient[0]) return null;
+
+  // Buscar dados da clínica
+  const clinic = await db
+    .select({
+      id: clinicsTable.id,
+      name: clinicsTable.name,
+    })
+    .from(clinicsTable)
+    .where(eq(clinicsTable.id, patient[0].clinicId))
+    .limit(1);
+
+  return {
+    ...patient[0],
+    clinic: clinic[0] || {
+      id: patient[0].clinicId,
+      name: "Clínica não encontrada",
+    },
+  };
 }
 
 export default async function PatientProfilePage() {
@@ -158,23 +179,40 @@ export default async function PatientProfilePage() {
                   </div>
                 )}
 
-                {patientData.city && patientData.state && (
+                {/* Endereço completo */}
+                {(patientData.addressName || patientData.city) && (
                   <div>
                     <p className="text-sm font-medium text-gray-500">
-                      Cidade/Estado
+                      Endereço
                     </p>
-                    <p className="text-gray-900">
-                      {patientData.city}, {patientData.state}
-                    </p>
-                  </div>
-                )}
-
-                {patientData.zipCode && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">CEP</p>
-                    <p className="text-gray-900">
-                      {formatCEP(patientData.zipCode)}
-                    </p>
+                    <div className="space-y-1 text-sm text-gray-900">
+                      {patientData.addressType && patientData.addressName && (
+                        <p>
+                          {patientData.addressType.charAt(0).toUpperCase() +
+                            patientData.addressType.slice(1)}{" "}
+                          {patientData.addressName}
+                          {patientData.addressNumber &&
+                            `, ${patientData.addressNumber}`}
+                          {patientData.addressComplement &&
+                            ` - ${patientData.addressComplement}`}
+                        </p>
+                      )}
+                      {patientData.addressNeighborhood && (
+                        <p>{patientData.addressNeighborhood}</p>
+                      )}
+                      {patientData.city && patientData.state && (
+                        <p>
+                          {patientData.city}, {patientData.state}
+                        </p>
+                      )}
+                      {patientData.zipCode && (
+                        <p>CEP: {formatCEP(patientData.zipCode)}</p>
+                      )}
+                      {patientData.country &&
+                        patientData.country !== "Brasil" && (
+                          <p>{patientData.country}</p>
+                        )}
+                    </div>
                   </div>
                 )}
 

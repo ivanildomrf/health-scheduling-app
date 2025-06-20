@@ -27,10 +27,27 @@ const updatePatientProfileSchema = z.object({
     .email("Digite um email válido"),
   phone: z.string().min(1, "Telefone é obrigatório"),
 
-  // Endereço
+  // Endereço completo
+  zipCode: z.string().optional(),
+  addressType: z
+    .enum([
+      "rua",
+      "avenida",
+      "travessa",
+      "alameda",
+      "praca",
+      "estrada",
+      "rodovia",
+      "outro",
+    ])
+    .optional(),
+  addressName: z.string().optional(),
+  addressNumber: z.string().optional(),
+  addressComplement: z.string().optional(),
+  addressNeighborhood: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
-  zipCode: z.string().optional(),
+  country: z.string().optional(),
 
   // Documentos
   cpf: z.string().optional(),
@@ -82,16 +99,38 @@ export const updatePatientProfile = actionClient
           name: parsedInput.name,
           socialName: parsedInput.socialName || null,
           motherName: parsedInput.motherName || null,
-          sex: parsedInput.sex,
+          sex: parsedInput.sex as "male" | "female",
           birthDate: parsedInput.birthDate
             ? new Date(parsedInput.birthDate)
             : null,
-          raceColor: parsedInput.raceColor || null,
+          raceColor: parsedInput.raceColor as
+            | "branca"
+            | "preta"
+            | "parda"
+            | "amarela"
+            | "indigena"
+            | "sem_informacao"
+            | null,
           email: parsedInput.email,
           phone: parsedInput.phone,
+          zipCode: parsedInput.zipCode || null,
+          addressType: parsedInput.addressType as
+            | "rua"
+            | "avenida"
+            | "travessa"
+            | "alameda"
+            | "praca"
+            | "estrada"
+            | "rodovia"
+            | "outro"
+            | null,
+          addressName: parsedInput.addressName || null,
+          addressNumber: parsedInput.addressNumber || null,
+          addressComplement: parsedInput.addressComplement || null,
+          addressNeighborhood: parsedInput.addressNeighborhood || null,
           city: parsedInput.city || null,
           state: parsedInput.state || null,
-          zipCode: parsedInput.zipCode || null,
+          country: parsedInput.country || null,
           cpf: parsedInput.cpf || null,
           cnsNumber: parsedInput.cnsNumber || null,
           emergencyContact: parsedInput.emergencyContact || null,
