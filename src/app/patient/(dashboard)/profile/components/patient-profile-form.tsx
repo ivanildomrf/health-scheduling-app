@@ -451,7 +451,7 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
     }
   }, [pendingSaves, isSaving, form, updateProfileAction, patientData.id]);
 
-  // Função para agendar salvamento de um campo com feedback mais inteligente
+  // Função original para campos que não são de texto livre
   const saveField = useCallback(
     (fieldName: string, value: any) => {
       // Adicionar o campo à fila de salvamentos pendentes
@@ -468,18 +468,21 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
         clearTimeout(saveTimeoutRef.current);
       }
 
-      // Agendar processamento dos salvamentos após 300ms (reduzido de 500ms)
+      // Agendar processamento dos salvamentos após 500ms
       saveTimeoutRef.current = setTimeout(() => {
         // Marcar campos como "saving" apenas quando realmente for salvar
-        Object.keys(pendingSaves).forEach((field) => {
-          setFieldStatus((prev) => ({ ...prev, [field]: "saving" }));
+        setPendingSaves((currentPending) => {
+          Object.keys(currentPending).forEach((field) => {
+            setFieldStatus((prev) => ({ ...prev, [field]: "saving" }));
+          });
+          return currentPending;
         });
         setFieldStatus((prev) => ({ ...prev, [fieldName]: "saving" }));
 
         processPendingSaves();
-      }, 300);
+      }, 500);
     },
-    [processPendingSaves, pendingSaves],
+    [processPendingSaves],
   );
 
   // Limpar timeout ao desmontar componente
@@ -490,6 +493,20 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
       }
     };
   }, []);
+
+  // Monitorar mudanças no campo passportNumber e salvar automaticamente
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (
+        name === "passportNumber" &&
+        value.passportNumber !== patientData.passportNumber
+      ) {
+        saveField("passportNumber", value.passportNumber);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [form, saveField, patientData.passportNumber]);
 
   // Componente para indicador global de salvamento
   const GlobalSaveIndicator = () => {
@@ -538,6 +555,22 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
     name: string;
     children: React.ReactNode;
     onBlur?: () => void;
+  }) => (
+    <div className="relative">
+      {children}
+      <div className="absolute top-8 right-2">
+        <FieldStatusIndicator fieldName={name} />
+      </div>
+    </div>
+  );
+
+  // Wrapper otimizado para campos de texto livre (evita perda de foco)
+  const AutoSaveTextFormField = ({
+    name,
+    children,
+  }: {
+    name: string;
+    children: React.ReactNode;
   }) => (
     <div className="relative">
       {children}
@@ -746,7 +779,7 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
           setFieldStatus((prev) => ({ ...prev, [field]: "saving" }));
         });
         processPendingSaves();
-      }, 300);
+      }, 500);
 
       toast.success("Campos de estrangeiro foram limpos automaticamente", {
         description:
@@ -794,7 +827,7 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <AutoSaveFormField name="name">
+              <AutoSaveTextFormField name="name">
                 <FormField
                   control={form.control}
                   name="name"
@@ -804,19 +837,20 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                       <FormControl>
                         <Input
                           {...field}
-                          onBlur={(e) => {
-                            field.onBlur();
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
                             saveField("name", e.target.value);
                           }}
+                          onBlur={field.onBlur}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </AutoSaveFormField>
+              </AutoSaveTextFormField>
 
-              <AutoSaveFormField name="socialName">
+              <AutoSaveTextFormField name="socialName">
                 <FormField
                   control={form.control}
                   name="socialName"
@@ -827,21 +861,22 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                         <Input
                           {...field}
                           placeholder="Nome pelo qual prefere ser chamado"
-                          onBlur={(e) => {
-                            field.onBlur();
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
                             saveField("socialName", e.target.value);
                           }}
+                          onBlur={field.onBlur}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </AutoSaveFormField>
+              </AutoSaveTextFormField>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <AutoSaveFormField name="motherName">
+              <AutoSaveTextFormField name="motherName">
                 <FormField
                   control={form.control}
                   name="motherName"
@@ -857,19 +892,20 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                               ? "Mãe desconhecida"
                               : "Nome completo da mãe"
                           }
-                          onBlur={(e) => {
-                            field.onBlur();
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
                             if (!form.watch("motherUnknown")) {
                               saveField("motherName", e.target.value);
                             }
                           }}
+                          onBlur={field.onBlur}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </AutoSaveFormField>
+              </AutoSaveTextFormField>
 
               <FormField
                 control={form.control}
@@ -1137,7 +1173,7 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
             {isEstrangeiro && (
               <>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <AutoSaveFormField name="birthCity">
+                  <AutoSaveTextFormField name="birthCity">
                     <FormField
                       control={form.control}
                       name="birthCity"
@@ -1147,19 +1183,20 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                           <FormControl>
                             <Input
                               {...field}
-                              onBlur={(e) => {
-                                field.onBlur();
+                              onChange={(e) => {
+                                field.onChange(e.target.value);
                                 saveField("birthCity", e.target.value);
                               }}
+                              onBlur={field.onBlur}
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  </AutoSaveFormField>
+                  </AutoSaveTextFormField>
 
-                  <AutoSaveFormField name="birthState">
+                  <AutoSaveTextFormField name="birthState">
                     <FormField
                       control={form.control}
                       name="birthState"
@@ -1169,17 +1206,18 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                           <FormControl>
                             <Input
                               {...field}
-                              onBlur={(e) => {
-                                field.onBlur();
+                              onChange={(e) => {
+                                field.onChange(e.target.value);
                                 saveField("birthState", e.target.value);
                               }}
+                              onBlur={field.onBlur}
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  </AutoSaveFormField>
+                  </AutoSaveTextFormField>
                 </div>
 
                 <AutoSaveFormField name="naturalizationDate">
@@ -1219,27 +1257,22 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <AutoSaveFormField name="passportNumber">
-                  <FormField
-                    control={form.control}
-                    name="passportNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Número do Passaporte</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            onBlur={(e) => {
-                              field.onBlur();
-                              saveField("passportNumber", e.target.value);
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </AutoSaveFormField>
+                <FormField
+                  control={form.control}
+                  name="passportNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número do Passaporte</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Digite o número do passaporte"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <AutoSaveFormField name="passportCountry">
                   <FormField
@@ -1349,7 +1382,7 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
             <CardTitle>Dados de Contato</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <AutoSaveFormField name="email">
+            <AutoSaveTextFormField name="email">
               <FormField
                 control={form.control}
                 name="email"
@@ -1363,17 +1396,18 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                         placeholder="usuario@email.com"
                         autoComplete="email"
                         inputMode="email"
-                        onBlur={(e) => {
-                          field.onBlur();
+                        onChange={(e) => {
+                          field.onChange(e.target.value);
                           saveField("email", e.target.value);
                         }}
+                        onBlur={field.onBlur}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </AutoSaveFormField>
+            </AutoSaveTextFormField>
 
             <AutoSaveFormField name="phone">
               <FormField
@@ -1473,7 +1507,7 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
 
             {/* Tipo e nome do logradouro */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <AutoSaveFormField name="addressName">
+              <AutoSaveTextFormField name="addressName">
                 <FormField
                   control={form.control}
                   name="addressName"
@@ -1484,17 +1518,18 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                         <Input
                           {...field}
                           placeholder="Ex: Rua das Flores"
-                          onBlur={(e) => {
-                            field.onBlur();
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
                             saveField("addressName", e.target.value);
                           }}
+                          onBlur={field.onBlur}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </AutoSaveFormField>
+              </AutoSaveTextFormField>
               <AutoSaveFormField name="addressType">
                 <FormField
                   control={form.control}
