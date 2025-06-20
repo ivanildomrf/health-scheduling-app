@@ -268,9 +268,10 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [loadingMunicipios, setLoadingMunicipios] = useState(false);
 
-  // Estado para controlar salvamentos pendentes
+  // Estados para controlar salvamentos pendentes
   const [pendingSaves, setPendingSaves] = useState<Record<string, any>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const form = useForm<ProfileFormData>({
@@ -383,13 +384,9 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
     if (Object.keys(pendingSaves).length === 0 || isSaving) return;
 
     setIsSaving(true);
+    setHasUnsavedChanges(false); // Limpar flag de mudanças não salvas
     const fieldsToSave = { ...pendingSaves };
     setPendingSaves({});
-
-    // Marcar todos os campos como "saving"
-    Object.keys(fieldsToSave).forEach((fieldName) => {
-      setFieldStatus((prev) => ({ ...prev, [fieldName]: "saving" }));
-    });
 
     try {
       // Obter todos os valores atuais do formulário
@@ -402,7 +399,6 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
       };
 
       console.log("Salvando campos em lote:", Object.keys(fieldsToSave));
-      console.log("Dados sendo enviados:", updatedData);
 
       const result = await updateProfileAction.executeAsync({
         patientId: patientData.id,
@@ -410,17 +406,17 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
       });
 
       if (result?.data?.success) {
-        // Marcar todos os campos como "saved"
+        // Marcar todos os campos como "saved" imediatamente
         Object.keys(fieldsToSave).forEach((fieldName) => {
           setFieldStatus((prev) => ({ ...prev, [fieldName]: "saved" }));
         });
 
-        // Remover status "saved" após 2 segundos
+        // Remover status "saved" após 1.5 segundos (reduzido de 2s)
         setTimeout(() => {
           Object.keys(fieldsToSave).forEach((fieldName) => {
             setFieldStatus((prev) => ({ ...prev, [fieldName]: "idle" }));
           });
-        }, 2000);
+        }, 1500);
       } else {
         console.error("Erro ao salvar campos:", result?.data?.error);
         Object.keys(fieldsToSave).forEach((fieldName) => {
@@ -429,6 +425,13 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
         if (result?.data?.error) {
           toast.error(result.data.error);
         }
+
+        // Remover status de erro após 3 segundos
+        setTimeout(() => {
+          Object.keys(fieldsToSave).forEach((fieldName) => {
+            setFieldStatus((prev) => ({ ...prev, [fieldName]: "idle" }));
+          });
+        }, 3000);
       }
     } catch (error) {
       console.error("Erro ao salvar campos:", error);
@@ -436,12 +439,19 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
         setFieldStatus((prev) => ({ ...prev, [fieldName]: "error" }));
       });
       toast.error("Erro ao salvar campos");
+
+      // Remover status de erro após 3 segundos
+      setTimeout(() => {
+        Object.keys(fieldsToSave).forEach((fieldName) => {
+          setFieldStatus((prev) => ({ ...prev, [fieldName]: "idle" }));
+        });
+      }, 3000);
     } finally {
       setIsSaving(false);
     }
   }, [pendingSaves, isSaving, form, updateProfileAction, patientData.id]);
 
-  // Função para agendar salvamento de um campo
+  // Função para agendar salvamento de um campo com feedback mais inteligente
   const saveField = useCallback(
     (fieldName: string, value: any) => {
       // Adicionar o campo à fila de salvamentos pendentes
@@ -450,20 +460,26 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
         [fieldName]: value,
       }));
 
-      // Marcar campo como "saving" imediatamente para feedback visual
-      setFieldStatus((prev) => ({ ...prev, [fieldName]: "saving" }));
+      // Marcar que existem mudanças não salvas
+      setHasUnsavedChanges(true);
 
       // Cancelar timeout anterior se existir
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
 
-      // Agendar processamento dos salvamentos após 500ms de inatividade
+      // Agendar processamento dos salvamentos após 300ms (reduzido de 500ms)
       saveTimeoutRef.current = setTimeout(() => {
+        // Marcar campos como "saving" apenas quando realmente for salvar
+        Object.keys(pendingSaves).forEach((field) => {
+          setFieldStatus((prev) => ({ ...prev, [field]: "saving" }));
+        });
+        setFieldStatus((prev) => ({ ...prev, [fieldName]: "saving" }));
+
         processPendingSaves();
-      }, 500);
+      }, 300);
     },
-    [processPendingSaves],
+    [processPendingSaves, pendingSaves],
   );
 
   // Limpar timeout ao desmontar componente
@@ -475,19 +491,41 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
     };
   }, []);
 
-  // Componente para mostrar status de salvamento
+  // Componente para indicador global de salvamento
+  const GlobalSaveIndicator = () => {
+    if (isSaving) {
+      return (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-white shadow-lg">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm font-medium">Salvando...</span>
+        </div>
+      );
+    }
+
+    if (hasUnsavedChanges) {
+      return (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-white shadow-lg">
+          <AlertCircle className="h-4 w-4" />
+          <span className="text-sm font-medium">Mudanças não salvas</span>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  // Componente para mostrar status de salvamento (otimizado)
   const FieldStatusIndicator = ({ fieldName }: { fieldName: string }) => {
     const status = fieldStatus[fieldName] || "idle";
 
+    // Só mostrar indicador se o status for relevante
     switch (status) {
-      case "saving":
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
       case "saved":
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case "error":
         return <AlertCircle className="h-4 w-4 text-red-500" />;
       default:
-        return null;
+        return null; // Não mostrar loading individual, usar o global
     }
   };
 
@@ -638,6 +676,9 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
 
   return (
     <Form {...form}>
+      {/* Indicador global de salvamento */}
+      <GlobalSaveIndicator />
+
       <div className="space-y-8">
         {/* Header com informação sobre auto-save */}
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
@@ -645,11 +686,12 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
             <CheckCircle className="h-5 w-5 text-blue-600" />
             <div>
               <h3 className="font-medium text-blue-900">
-                Salvamento Automático
+                Salvamento Automático Inteligente
               </h3>
               <p className="text-sm text-blue-700">
-                Suas alterações são salvas automaticamente quando você sai de
-                cada campo.
+                Suas alterações são salvas automaticamente em lote. Você verá um
+                indicador no canto superior direito quando houver mudanças não
+                salvas.
               </p>
             </div>
           </div>
