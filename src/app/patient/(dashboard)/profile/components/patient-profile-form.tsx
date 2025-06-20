@@ -283,6 +283,7 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const maxWaitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Estados para confirmação de sincronização de países
   const [showCountrySyncDialog, setShowCountrySyncDialog] = useState(false);
@@ -442,13 +443,13 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
           });
         }, 1500);
       } else {
-        console.error("Erro ao salvar campos:", result?.data?.error);
+        const errorMessage =
+          result?.data?.error || "Erro desconhecido ao salvar";
+        console.error("Erro ao salvar campos:", errorMessage);
         Object.keys(fieldsToSave).forEach((fieldName) => {
           setFieldStatus((prev) => ({ ...prev, [fieldName]: "error" }));
         });
-        if (result?.data?.error) {
-          toast.error(result.data.error);
-        }
+        toast.error(errorMessage);
 
         // Remover status de erro após 3 segundos
         setTimeout(() => {
@@ -475,6 +476,35 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
     }
   }, [pendingSaves, isSaving, form, updateProfileAction, patientData.id]);
 
+  // Função para forçar salvamento imediato
+  const forceSave = useCallback(async () => {
+    if (Object.keys(pendingSaves).length === 0 || isSaving) return;
+
+    // Cancelar timeouts pendentes
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    if (maxWaitTimeoutRef.current) {
+      clearTimeout(maxWaitTimeoutRef.current);
+      maxWaitTimeoutRef.current = null;
+    }
+
+    // Marcar campos como salvando
+    setPendingSaves((currentPending) => {
+      Object.keys(currentPending).forEach((field) => {
+        setFieldStatus((prev) => ({ ...prev, [field]: "saving" }));
+      });
+      return currentPending;
+    });
+
+    try {
+      await processPendingSaves();
+    } catch (error) {
+      console.error("Erro no processamento de salvamentos:", error);
+    }
+  }, [pendingSaves, isSaving, processPendingSaves]);
+
   // Função original para campos que não são de texto livre
   const saveField = useCallback(
     (fieldName: string, value: any) => {
@@ -492,8 +522,22 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
         clearTimeout(saveTimeoutRef.current);
       }
 
+      // Se não há timeout de tempo máximo ativo, criar um
+      if (!maxWaitTimeoutRef.current) {
+        maxWaitTimeoutRef.current = setTimeout(async () => {
+          console.log("Tempo máximo atingido, salvando automaticamente...");
+          await forceSave();
+        }, 3000); // Salvar após 3 segundos no máximo
+      }
+
       // Agendar processamento dos salvamentos após 500ms
-      saveTimeoutRef.current = setTimeout(() => {
+      saveTimeoutRef.current = setTimeout(async () => {
+        // Cancelar timeout de tempo máximo já que vamos salvar agora
+        if (maxWaitTimeoutRef.current) {
+          clearTimeout(maxWaitTimeoutRef.current);
+          maxWaitTimeoutRef.current = null;
+        }
+
         // Marcar campos como "saving" apenas quando realmente for salvar
         setPendingSaves((currentPending) => {
           Object.keys(currentPending).forEach((field) => {
@@ -501,22 +545,63 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
           });
           return currentPending;
         });
-        setFieldStatus((prev) => ({ ...prev, [fieldName]: "saving" }));
 
-        processPendingSaves();
+        try {
+          await processPendingSaves();
+        } catch (error) {
+          console.error("Erro no processamento de salvamentos:", error);
+        }
       }, 500);
     },
-    [processPendingSaves],
+    [processPendingSaves, forceSave],
   );
 
-  // Limpar timeout ao desmontar componente
+  // Limpar timeouts ao desmontar componente e salvar se necessário
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
+      if (maxWaitTimeoutRef.current) {
+        clearTimeout(maxWaitTimeoutRef.current);
+      }
     };
   }, []);
+
+  // Salvamento ao sair da página
+  useEffect(() => {
+    const handleBeforeUnload = async (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges && Object.keys(pendingSaves).length > 0) {
+        // Tentar salvar antes de sair
+        await forceSave();
+
+        // Mostrar aviso ao usuário
+        e.preventDefault();
+        e.returnValue =
+          "Você tem alterações não salvas. Tem certeza que deseja sair?";
+        return e.returnValue;
+      }
+    };
+
+    const handleVisibilityChange = async () => {
+      if (
+        document.visibilityState === "hidden" &&
+        hasUnsavedChanges &&
+        Object.keys(pendingSaves).length > 0
+      ) {
+        // Página ficou oculta (usuário mudou de aba/minimizou), salvar imediatamente
+        await forceSave();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [hasUnsavedChanges, pendingSaves, forceSave]);
 
   // Monitorar mudanças no campo passportNumber e salvar automaticamente
   useEffect(() => {
@@ -548,6 +633,12 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
         <div className="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-white shadow-lg">
           <AlertCircle className="h-4 w-4" />
           <span className="text-sm font-medium">Mudanças não salvas</span>
+          <button
+            onClick={forceSave}
+            className="ml-2 rounded bg-orange-600 px-2 py-1 text-xs font-medium hover:bg-orange-700"
+          >
+            Salvar Agora
+          </button>
         </div>
       );
     }
@@ -787,23 +878,23 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
       // Limpar campos de nascimento no exterior
       form.setValue("birthCity", "");
       form.setValue("birthState", "");
-      form.setValue("naturalizationDate", "");
+      form.setValue("naturalizationDate", undefined);
 
       // Limpar campos de passaporte
       form.setValue("passportNumber", "");
       form.setValue("passportCountry", "");
-      form.setValue("passportIssueDate", "");
-      form.setValue("passportExpiryDate", "");
+      form.setValue("passportIssueDate", undefined);
+      form.setValue("passportExpiryDate", undefined);
 
       // Salvar as limpezas
       const fieldsToSave = {
         birthCity: "",
         birthState: "",
-        naturalizationDate: "",
+        naturalizationDate: null,
         passportNumber: "",
         passportCountry: "",
-        passportIssueDate: "",
-        passportExpiryDate: "",
+        passportIssueDate: null,
+        passportExpiryDate: null,
       };
 
       // Adicionar todos os campos limpos à fila de salvamento
@@ -821,11 +912,15 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
       }
 
       // Agendar processamento dos salvamentos
-      saveTimeoutRef.current = setTimeout(() => {
+      saveTimeoutRef.current = setTimeout(async () => {
         Object.keys(fieldsToSave).forEach((field) => {
           setFieldStatus((prev) => ({ ...prev, [field]: "saving" }));
         });
-        processPendingSaves();
+        try {
+          await processPendingSaves();
+        } catch (error) {
+          console.error("Erro no processamento de salvamentos:", error);
+        }
       }, 500);
 
       toast.success("Campos de estrangeiro foram limpos automaticamente", {
@@ -845,14 +940,69 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
   );
 
   // Função para confirmar sincronização de países
-  const handleConfirmCountrySync = () => {
+  const handleConfirmCountrySync = async () => {
     if (pendingCountrySync) {
       form.setValue("passportCountry", pendingCountrySync.birthCountry);
-      saveField("passportCountry", pendingCountrySync.birthCountry);
 
-      toast.success(
-        `País emissor do passaporte definido como ${pendingCountrySync.countryName}`,
-      );
+      // Cancelar qualquer timeout pendente
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      // Limpar salvamentos pendentes anteriores
+      setPendingSaves({});
+
+      // Marcar campo como salvando
+      setFieldStatus((prev) => ({ ...prev, passportCountry: "saving" }));
+      setIsSaving(true);
+
+      try {
+        // Obter todos os valores atuais do formulário
+        const formData = form.getValues();
+
+        console.log("Salvando sincronização de país imediatamente");
+
+        const result = await updateProfileAction.executeAsync({
+          patientId: patientData.id,
+          ...formData,
+        });
+
+        if (result?.data?.success) {
+          // Marcar campo como salvo
+          setFieldStatus((prev) => ({ ...prev, passportCountry: "saved" }));
+
+          // Remover status "saved" após 1.5 segundos
+          setTimeout(() => {
+            setFieldStatus((prev) => ({ ...prev, passportCountry: "idle" }));
+          }, 1500);
+
+          toast.success(
+            `País emissor do passaporte definido como ${pendingCountrySync.countryName}`,
+          );
+        } else {
+          const errorMessage =
+            result?.data?.error || "Erro desconhecido ao salvar";
+          console.error("Erro ao salvar campo:", errorMessage);
+          setFieldStatus((prev) => ({ ...prev, passportCountry: "error" }));
+          toast.error(errorMessage);
+
+          // Remover status de erro após 3 segundos
+          setTimeout(() => {
+            setFieldStatus((prev) => ({ ...prev, passportCountry: "idle" }));
+          }, 3000);
+        }
+      } catch (error) {
+        console.error("Erro ao salvar campo:", error);
+        setFieldStatus((prev) => ({ ...prev, passportCountry: "error" }));
+        toast.error("Erro ao salvar campo");
+
+        // Remover status de erro após 3 segundos
+        setTimeout(() => {
+          setFieldStatus((prev) => ({ ...prev, passportCountry: "idle" }));
+        }, 3000);
+      } finally {
+        setIsSaving(false);
+      }
     }
 
     setShowCountrySyncDialog(false);
@@ -866,10 +1016,18 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
   };
 
   // Função para confirmar limpeza de campos de estrangeiro
-  const handleConfirmClearFields = () => {
+  const handleConfirmClearFields = async () => {
     if (pendingBrazilChange) {
-      // Limpar os campos
-      clearForeignerFields(false);
+      // Limpar campos de nascimento no exterior
+      form.setValue("birthCity", "");
+      form.setValue("birthState", "");
+      form.setValue("naturalizationDate", undefined);
+
+      // Limpar campos de passaporte
+      form.setValue("passportNumber", "");
+      form.setValue("passportCountry", "");
+      form.setValue("passportIssueDate", undefined);
+      form.setValue("passportExpiryDate", undefined);
 
       // Atualizar o país para Brasil
       form.setValue("birthCountry", pendingBrazilChange.newValue);
@@ -877,7 +1035,94 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
         pendingBrazilChange.newValue,
       );
       form.setValue("nationality", nacionalidade);
-      saveField("birthCountry", pendingBrazilChange.newValue);
+
+      // Cancelar qualquer timeout pendente
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      // Limpar salvamentos pendentes anteriores
+      setPendingSaves({});
+
+      // Marcar campos como salvando
+      const fieldsToSave = [
+        "birthCity",
+        "birthState",
+        "naturalizationDate",
+        "passportNumber",
+        "passportCountry",
+        "passportIssueDate",
+        "passportExpiryDate",
+        "birthCountry",
+        "nationality",
+      ];
+
+      fieldsToSave.forEach((field) => {
+        setFieldStatus((prev) => ({ ...prev, [field]: "saving" }));
+      });
+
+      setIsSaving(true);
+
+      try {
+        // Obter todos os valores atuais do formulário
+        const formData = form.getValues();
+
+        console.log("Salvando limpeza de campos de estrangeiro imediatamente");
+
+        const result = await updateProfileAction.executeAsync({
+          patientId: patientData.id,
+          ...formData,
+        });
+
+        if (result?.data?.success) {
+          // Marcar todos os campos como salvos
+          fieldsToSave.forEach((fieldName) => {
+            setFieldStatus((prev) => ({ ...prev, [fieldName]: "saved" }));
+          });
+
+          // Remover status "saved" após 1.5 segundos
+          setTimeout(() => {
+            fieldsToSave.forEach((fieldName) => {
+              setFieldStatus((prev) => ({ ...prev, [fieldName]: "idle" }));
+            });
+          }, 1500);
+
+          toast.success("Campos de estrangeiro foram limpos automaticamente", {
+            description:
+              "Dados de passaporte, naturalização e nascimento no exterior foram removidos",
+          });
+        } else {
+          const errorMessage =
+            result?.data?.error || "Erro desconhecido ao salvar";
+          console.error("Erro ao salvar campos:", errorMessage);
+          fieldsToSave.forEach((fieldName) => {
+            setFieldStatus((prev) => ({ ...prev, [fieldName]: "error" }));
+          });
+          toast.error(errorMessage);
+
+          // Remover status de erro após 3 segundos
+          setTimeout(() => {
+            fieldsToSave.forEach((fieldName) => {
+              setFieldStatus((prev) => ({ ...prev, [fieldName]: "idle" }));
+            });
+          }, 3000);
+        }
+      } catch (error) {
+        console.error("Erro ao salvar campos:", error);
+        fieldsToSave.forEach((fieldName) => {
+          setFieldStatus((prev) => ({ ...prev, [fieldName]: "error" }));
+        });
+        toast.error("Erro ao salvar campos");
+
+        // Remover status de erro após 3 segundos
+        setTimeout(() => {
+          fieldsToSave.forEach((fieldName) => {
+            setFieldStatus((prev) => ({ ...prev, [fieldName]: "idle" }));
+          });
+        }, 3000);
+      } finally {
+        setIsSaving(false);
+      }
     }
 
     setShowClearFieldsDialog(false);
@@ -1210,6 +1455,7 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                               determinarNacionalidade(value);
                             form.setValue("nationality", nacionalidade);
                             saveField("birthCountry", value);
+                            saveField("nationality", nacionalidade);
                             return; // Sair da função, não executar lógica de país estrangeiro
                           }
 

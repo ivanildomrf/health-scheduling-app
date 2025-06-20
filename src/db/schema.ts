@@ -180,13 +180,6 @@ export const genderEnum = pgEnum("gender", [
   "nao_informado",
 ]);
 
-export const phoneTypeEnum = pgEnum("phone_type", [
-  "residencial",
-  "comercial",
-  "celular",
-  "recado",
-]);
-
 export const addressTypeEnum = pgEnum("address_type", [
   "rua",
   "avenida",
@@ -253,8 +246,6 @@ export const patientsTable = pgTable("patients", {
 
   // Contato
   email: text("email").notNull().unique(),
-  phoneType: phoneTypeEnum("phone_type").default("celular"),
-  phoneDdd: text("phone_ddd"),
   phone: text("phone").notNull(),
 
   // Endereço completo

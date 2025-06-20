@@ -29,6 +29,20 @@
       "when": 1750211834137,
       "tag": "0003_rapid_true_believers",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1750390064695,
+      "tag": "0004_slow_menace",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1750390096809,
+      "tag": "0005_absent_adam_destine",
+      "breakpoints": true
     }
   ]
 }
