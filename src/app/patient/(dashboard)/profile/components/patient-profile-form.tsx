@@ -64,16 +64,77 @@ interface Municipio {
   nome: string;
 }
 
+// Países para seleção
+const PAISES = [
+  { value: "BR", label: "Brasil" },
+  { value: "AR", label: "Argentina" },
+  { value: "BO", label: "Bolívia" },
+  { value: "CL", label: "Chile" },
+  { value: "CO", label: "Colômbia" },
+  { value: "EC", label: "Equador" },
+  { value: "GF", label: "Guiana Francesa" },
+  { value: "GY", label: "Guiana" },
+  { value: "PY", label: "Paraguai" },
+  { value: "PE", label: "Peru" },
+  { value: "SR", label: "Suriname" },
+  { value: "UY", label: "Uruguai" },
+  { value: "VE", label: "Venezuela" },
+  { value: "US", label: "Estados Unidos" },
+  { value: "CA", label: "Canadá" },
+  { value: "MX", label: "México" },
+  { value: "PT", label: "Portugal" },
+  { value: "ES", label: "Espanha" },
+  { value: "IT", label: "Itália" },
+  { value: "FR", label: "França" },
+  { value: "DE", label: "Alemanha" },
+  { value: "JP", label: "Japão" },
+  { value: "CN", label: "China" },
+  { value: "OTHER", label: "Outro" },
+];
+
+// Graus de parentesco
+const GRAUS_PARENTESCO = [
+  { value: "pai", label: "Pai" },
+  { value: "mae", label: "Mãe" },
+  { value: "avo", label: "Avô" },
+  { value: "avo_feminino", label: "Avó" },
+  { value: "tio", label: "Tio" },
+  { value: "tia", label: "Tia" },
+  { value: "irmao", label: "Irmão" },
+  { value: "irma", label: "Irmã" },
+  { value: "tutor", label: "Tutor Legal" },
+  { value: "curador", label: "Curador" },
+  { value: "responsavel_legal", label: "Responsável Legal" },
+  { value: "outro", label: "Outro" },
+];
+
 const profileSchema = z.object({
   // Dados básicos obrigatórios do CNS
   name: z.string().min(1, "Nome é obrigatório"),
   socialName: z.string().optional(),
   motherName: z.string().optional(),
+  motherUnknown: z.boolean().optional(),
   sex: z.enum(["male", "female"], { message: "Sexo é obrigatório" }),
+  gender: z
+    .enum(["cisgender", "transgenero", "nao_binario", "outro", "nao_informado"])
+    .optional(),
   birthDate: z.string().optional(),
   raceColor: z
     .enum(["branca", "preta", "parda", "amarela", "indigena", "sem_informacao"])
     .optional(),
+
+  // Dados de nacionalidade
+  nationality: z.string().optional(),
+  birthCountry: z.string().optional(),
+  birthCity: z.string().optional(),
+  birthState: z.string().optional(),
+  naturalizationDate: z.string().optional(),
+
+  // Documentos para estrangeiros
+  passportNumber: z.string().optional(),
+  passportCountry: z.string().optional(),
+  passportIssueDate: z.string().optional(),
+  passportExpiryDate: z.string().optional(),
 
   // Contato
   email: z
@@ -107,9 +168,34 @@ const profileSchema = z.object({
   state: z.string().optional(),
   country: z.string().optional(),
 
-  // Documentos
+  // Documentos brasileiros
   cpf: z.string().optional(),
+  rgNumber: z.string().optional(),
+  rgComplement: z.string().optional(),
+  rgState: z.string().optional(),
+  rgIssuer: z.string().optional(),
+  rgIssueDate: z.string().optional(),
   cnsNumber: z.string().optional(),
+
+  // Guardião/Representante legal (para menores de 16 anos)
+  guardianName: z.string().optional(),
+  guardianRelationship: z
+    .enum([
+      "pai",
+      "mae",
+      "avo",
+      "avo_feminino",
+      "tio",
+      "tia",
+      "irmao",
+      "irma",
+      "tutor",
+      "curador",
+      "responsavel_legal",
+      "outro",
+    ])
+    .optional(),
+  guardianCpf: z.string().optional(),
 
   // Contato de emergência
   emergencyContact: z.string().optional(),
@@ -124,11 +210,22 @@ interface PatientProfileFormProps {
     name: string;
     socialName?: string | null;
     motherName?: string | null;
+    motherUnknown?: boolean | null;
     email: string;
     phone: string;
     sex: "male" | "female";
+    gender?: string | null;
     birthDate?: Date | null;
     raceColor?: string | null;
+    nationality?: string | null;
+    birthCountry?: string | null;
+    birthCity?: string | null;
+    birthState?: string | null;
+    naturalizationDate?: Date | null;
+    passportNumber?: string | null;
+    passportCountry?: string | null;
+    passportIssueDate?: Date | null;
+    passportExpiryDate?: Date | null;
     zipCode?: string | null;
     addressType?: string | null;
     addressName?: string | null;
@@ -139,7 +236,15 @@ interface PatientProfileFormProps {
     state?: string | null;
     country?: string | null;
     cpf?: string | null;
+    rgNumber?: string | null;
+    rgComplement?: string | null;
+    rgState?: string | null;
+    rgIssuer?: string | null;
+    rgIssueDate?: Date | null;
     cnsNumber?: string | null;
+    guardianName?: string | null;
+    guardianRelationship?: string | null;
+    guardianCpf?: string | null;
     emergencyContact?: string | null;
     emergencyPhone?: string | null;
     clinic: {
@@ -159,13 +264,30 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
       name: patientData.name,
       socialName: patientData.socialName || "",
       motherName: patientData.motherName || "",
+      motherUnknown: patientData.motherUnknown || false,
       email: patientData.email,
       phone: patientData.phone,
       sex: patientData.sex,
+      gender: (patientData.gender as any) || "nao_informado",
       birthDate: patientData.birthDate
         ? patientData.birthDate.toISOString().split("T")[0]
         : "",
       raceColor: (patientData.raceColor as any) || "sem_informacao",
+      nationality: patientData.nationality || "brasileira",
+      birthCountry: patientData.birthCountry || "BR",
+      birthCity: patientData.birthCity || "",
+      birthState: patientData.birthState || "",
+      naturalizationDate: patientData.naturalizationDate
+        ? patientData.naturalizationDate.toISOString().split("T")[0]
+        : "",
+      passportNumber: patientData.passportNumber || "",
+      passportCountry: patientData.passportCountry || "",
+      passportIssueDate: patientData.passportIssueDate
+        ? patientData.passportIssueDate.toISOString().split("T")[0]
+        : "",
+      passportExpiryDate: patientData.passportExpiryDate
+        ? patientData.passportExpiryDate.toISOString().split("T")[0]
+        : "",
       zipCode: patientData.zipCode || "",
       addressType: (patientData.addressType as any) || "rua",
       addressName: patientData.addressName || "",
@@ -176,7 +298,17 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
       state: patientData.state || "",
       country: patientData.country || "Brasil",
       cpf: patientData.cpf || "",
+      rgNumber: patientData.rgNumber || "",
+      rgComplement: patientData.rgComplement || "",
+      rgState: patientData.rgState || "",
+      rgIssuer: patientData.rgIssuer || "",
+      rgIssueDate: patientData.rgIssueDate
+        ? patientData.rgIssueDate.toISOString().split("T")[0]
+        : "",
       cnsNumber: patientData.cnsNumber || "",
+      guardianName: patientData.guardianName || "",
+      guardianRelationship: (patientData.guardianRelationship as any) || "",
+      guardianCpf: patientData.guardianCpf || "",
       emergencyContact: patientData.emergencyContact || "",
       emergencyPhone: patientData.emergencyPhone || "",
     },
@@ -294,6 +426,58 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
     [form, buscarMunicipios],
   );
 
+  // Função para calcular idade
+  const calcularIdade = useCallback((birthDate: string) => {
+    if (!birthDate) return null;
+    const hoje = new Date();
+    const nascimento = new Date(birthDate);
+    let idade = hoje.getFullYear() - nascimento.getFullYear();
+    const mes = hoje.getMonth() - nascimento.getMonth();
+    if (mes < 0 || (mes === 0 && hoje.getDate() < nascimento.getDate())) {
+      idade--;
+    }
+    return idade;
+  }, []);
+
+  // Função para determinar nacionalidade baseada no país de nascimento
+  const determinarNacionalidade = useCallback((paisCodigo: string) => {
+    const nacionalidades: Record<string, string> = {
+      BR: "brasileira",
+      AR: "argentina",
+      BO: "boliviana",
+      CL: "chilena",
+      CO: "colombiana",
+      EC: "equatoriana",
+      GF: "francesa",
+      GY: "guianense",
+      PY: "paraguaia",
+      PE: "peruana",
+      SR: "surinamesa",
+      UY: "uruguaia",
+      VE: "venezuelana",
+      US: "americana",
+      CA: "canadense",
+      MX: "mexicana",
+      PT: "portuguesa",
+      ES: "espanhola",
+      IT: "italiana",
+      FR: "francesa",
+      DE: "alemã",
+      JP: "japonesa",
+      CN: "chinesa",
+    };
+    return nacionalidades[paisCodigo] || "estrangeira";
+  }, []);
+
+  // Verificar se é menor de 16 anos
+  const birthDate = form.watch("birthDate");
+  const idade = birthDate ? calcularIdade(birthDate) : null;
+  const precisaGuardiao = idade !== null && idade < 16;
+
+  // Verificar se é estrangeiro
+  const birthCountry = form.watch("birthCountry");
+  const isEstrangeiro = birthCountry && birthCountry !== "BR";
+
   const onSubmit = (values: ProfileFormData) => {
     updateProfileAction.execute({
       patientId: patientData.id,
@@ -357,7 +541,15 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                     <FormControl>
                       <Input
                         {...field}
-                        disabled={updateProfileAction.isPending}
+                        disabled={
+                          updateProfileAction.isPending ||
+                          form.watch("motherUnknown")
+                        }
+                        placeholder={
+                          form.watch("motherUnknown")
+                            ? "Mãe desconhecida"
+                            : "Nome completo da mãe"
+                        }
                       />
                     </FormControl>
                     <FormMessage />
@@ -365,6 +557,39 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="motherUnknown"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-y-0 space-x-3 rounded-md border p-4">
+                    <FormControl>
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={(e) => {
+                          field.onChange(e.target.checked);
+                          if (e.target.checked) {
+                            form.setValue("motherName", "");
+                          }
+                        }}
+                        disabled={updateProfileAction.isPending}
+                        className="mt-1"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-sm font-normal">
+                        Mãe desconhecida
+                      </FormLabel>
+                      <p className="text-muted-foreground text-xs">
+                        Marque esta opção se a mãe for desconhecida
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="sex"
@@ -384,6 +609,37 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                       <SelectContent>
                         <SelectItem value="male">Masculino</SelectItem>
                         <SelectItem value="female">Feminino</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gênero</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={updateProfileAction.isPending}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o gênero" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="cisgender">Cisgênero</SelectItem>
+                        <SelectItem value="transgenero">Transgênero</SelectItem>
+                        <SelectItem value="nao_binario">Não binário</SelectItem>
+                        <SelectItem value="outro">Outro</SelectItem>
+                        <SelectItem value="nao_informado">
+                          Não informado
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -446,7 +702,226 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
           </CardContent>
         </Card>
 
-        {/* Seção 2: Contato */}
+        {/* Seção 2: Dados de Nacionalidade */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Dados de Nacionalidade</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="birthCountry"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>País de Nascimento</FormLabel>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Atualizar nacionalidade automaticamente
+                        const nacionalidade = determinarNacionalidade(value);
+                        form.setValue("nationality", nacionalidade);
+                      }}
+                      value={field.value}
+                      disabled={updateProfileAction.isPending}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o país" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PAISES.map((pais) => (
+                          <SelectItem key={pais.value} value={pais.value}>
+                            {pais.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="nationality"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nacionalidade</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        disabled={true}
+                        placeholder="Determinada automaticamente"
+                        className="bg-gray-50"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {isEstrangeiro && (
+              <>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="birthCity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cidade de Nascimento</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            disabled={updateProfileAction.isPending}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="birthState"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Estado/Província de Nascimento</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            disabled={updateProfileAction.isPending}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="naturalizationDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Data de Naturalização (se aplicável)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="date"
+                          disabled={updateProfileAction.isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Seção 3: Documentos para Estrangeiros */}
+        {isEstrangeiro && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Documentos para Estrangeiros</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="passportNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número do Passaporte</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          disabled={updateProfileAction.isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="passportCountry"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>País Emissor do Passaporte</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={updateProfileAction.isPending}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o país" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {PAISES.map((pais) => (
+                            <SelectItem key={pais.value} value={pais.value}>
+                              {pais.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="passportIssueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data de Emissão</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="date"
+                          disabled={updateProfileAction.isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="passportExpiryDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data de Validade</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="date"
+                          disabled={updateProfileAction.isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Seção 4: Contato */}
         <Card>
           <CardHeader>
             <CardTitle>Dados de Contato</CardTitle>
@@ -499,7 +974,7 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
           </CardContent>
         </Card>
 
-        {/* Seção 3: Endereço Completo */}
+        {/* Seção 5: Endereço Completo */}
         <Card>
           <CardHeader>
             <CardTitle>Endereço Completo</CardTitle>
@@ -745,7 +1220,7 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
           </CardContent>
         </Card>
 
-        {/* Seção 4: Documentos */}
+        {/* Seção 6: Documentos */}
         <Card>
           <CardHeader>
             <CardTitle>Documentos</CardTitle>
@@ -800,10 +1275,121 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                 )}
               />
             </div>
+
+            {/* Campos do RG */}
+            <div className="border-t pt-4">
+              <h4 className="mb-3 text-sm font-medium text-gray-900">
+                Registro de Identidade (RG)
+              </h4>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="rgNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número do RG</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          disabled={updateProfileAction.isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="rgComplement"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Complemento</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Ex: X"
+                          disabled={updateProfileAction.isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="rgState"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>UF Emissor</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={updateProfileAction.isPending}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="UF" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ESTADOS_BRASILEIROS.map((estado) => (
+                            <SelectItem key={estado.value} value={estado.value}>
+                              {estado.value}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="rgIssuer"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Órgão Emissor</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Ex: SSP, DETRAN, PC"
+                          disabled={updateProfileAction.isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="rgIssueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data de Emissão</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="date"
+                          disabled={updateProfileAction.isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Seção 5: Contato de Emergência */}
+        {/* Seção 7: Contato de Emergência */}
         <Card>
           <CardHeader>
             <CardTitle>Contato de Emergência</CardTitle>
@@ -853,6 +1439,93 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
             </div>
           </CardContent>
         </Card>
+
+        {/* Seção 8: Guardião/Representante Legal (para menores de 16 anos) */}
+        {precisaGuardiao && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Guardião/Representante Legal</CardTitle>
+              <p className="text-sm text-gray-600">
+                Obrigatório para menores de 16 anos (idade atual: {idade} anos)
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="guardianName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Nome do Guardião/Representante Legal *
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        disabled={updateProfileAction.isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="guardianRelationship"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Grau de Parentesco/Relacionamento *</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={updateProfileAction.isPending}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o parentesco" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {GRAUS_PARENTESCO.map((grau) => (
+                            <SelectItem key={grau.value} value={grau.value}>
+                              {grau.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="guardianCpf"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CPF do Guardião *</FormLabel>
+                      <FormControl>
+                        <PatternFormat
+                          format="###.###.###-##"
+                          mask="_"
+                          customInput={Input}
+                          placeholder="123.456.789-00"
+                          disabled={updateProfileAction.isPending}
+                          value={field.value}
+                          onValueChange={(values) => {
+                            field.onChange(values.formattedValue);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Botão de salvar */}
         <div className="flex justify-end">
