@@ -583,23 +583,72 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
       }
     };
 
-    const handleVisibilityChange = async () => {
-      if (
-        document.visibilityState === "hidden" &&
-        hasUnsavedChanges &&
-        Object.keys(pendingSaves).length > 0
-      ) {
-        // Página ficou oculta (usuário mudou de aba/minimizou), salvar imediatamente
-        await forceSave();
+    const handleVisibilityChange = () => {
+      console.log(
+        "Visibility change:",
+        document.visibilityState,
+        "Has unsaved:",
+        hasUnsavedChanges,
+        "Pending saves:",
+        Object.keys(pendingSaves),
+      );
+
+      if (document.visibilityState === "hidden") {
+        // Verificar se há mudanças não salvas
+        if (hasUnsavedChanges && Object.keys(pendingSaves).length > 0) {
+          console.log(
+            "Página ficou oculta com mudanças não salvas, salvando imediatamente...",
+          );
+
+          // Forçar salvamento imediato sem await (para não bloquear)
+          forceSave()
+            .then(() => {
+              console.log("Salvamento por visibilitychange concluído");
+            })
+            .catch((error) => {
+              console.error("Erro no salvamento por visibilitychange:", error);
+            });
+        }
+      }
+    };
+
+    const handlePageHide = () => {
+      console.log("Page hide event triggered");
+      if (hasUnsavedChanges && Object.keys(pendingSaves).length > 0) {
+        console.log("Salvando dados no pagehide...");
+        // Forçar salvamento imediato
+        forceSave().catch(console.error);
       }
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handlePageHide);
 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+  }, [hasUnsavedChanges, pendingSaves, forceSave]);
+
+  // Monitoramento adicional para navegação
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest("a");
+
+      if (link && hasUnsavedChanges && Object.keys(pendingSaves).length > 0) {
+        console.log("Clique em link detectado com mudanças não salvas");
+        // Salvar antes de navegar
+        forceSave().catch(console.error);
+      }
+    };
+
+    document.addEventListener("click", handleClick);
+
+    return () => {
+      document.removeEventListener("click", handleClick);
     };
   }, [hasUnsavedChanges, pendingSaves, forceSave]);
 
