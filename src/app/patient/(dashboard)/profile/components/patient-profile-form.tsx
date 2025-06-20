@@ -657,7 +657,37 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
     return idade;
   }, []);
 
-  // Função para determinar nacionalidade baseada no país de nascimento
+  // Função para obter o nome do país pelo código
+  const getPaisNome = (codigo: string): string => {
+    const paisMap: { [key: string]: string } = {
+      BR: "Brasil",
+      US: "Estados Unidos",
+      AR: "Argentina",
+      UY: "Uruguai",
+      PY: "Paraguai",
+      BO: "Bolívia",
+      PE: "Peru",
+      CO: "Colômbia",
+      VE: "Venezuela",
+      CL: "Chile",
+      EC: "Equador",
+      GY: "Guiana",
+      SR: "Suriname",
+      GF: "Guiana Francesa",
+      PT: "Portugal",
+      ES: "Espanha",
+      IT: "Itália",
+      DE: "Alemanha",
+      FR: "França",
+      JP: "Japão",
+      CN: "China",
+      OTHER: "Outro",
+    };
+
+    return paisMap[codigo] || codigo;
+  };
+
+  // Função para determinar nacionalidade com base no país
   const determinarNacionalidade = useCallback((paisCodigo: string) => {
     const nacionalidades: Record<string, string> = {
       BR: "Brasileira",
@@ -1108,6 +1138,18 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                           field.onChange(value);
                           const nacionalidade = determinarNacionalidade(value);
                           form.setValue("nationality", nacionalidade);
+
+                          // Se selecionou um país estrangeiro (diferente do Brasil),
+                          // sincronizar com o país emissor do passaporte
+                          if (value && value !== "BR") {
+                            form.setValue("passportCountry", value);
+                            saveField("passportCountry", value);
+
+                            // Mostrar mensagem informativa
+                            toast.success(
+                              `País emissor do passaporte foi automaticamente definido como ${getPaisNome(value)}`,
+                            );
+                          }
 
                           saveField("birthCountry", value);
                         }}
