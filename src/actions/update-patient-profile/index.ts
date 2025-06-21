@@ -133,6 +133,25 @@ export const updatePatientProfile = actionClient
       }
     }
 
+    // Verificar se o CPF já está sendo usado por outro paciente
+    if (parsedInput.cpf && parsedInput.cpf.trim() !== "") {
+      const existingPatientByCpf = await db
+        .select()
+        .from(patientsTable)
+        .where(eq(patientsTable.cpf, parsedInput.cpf.trim()))
+        .limit(1);
+
+      if (
+        existingPatientByCpf.length > 0 &&
+        existingPatientByCpf[0].id !== parsedInput.patientId
+      ) {
+        return {
+          success: false,
+          error: "Este CPF já está sendo usado por outro paciente",
+        };
+      }
+    }
+
     try {
       // Atualizar o perfil do paciente
       await db
@@ -231,7 +250,25 @@ export const updatePatientProfile = actionClient
       revalidatePath("/patient/dashboard");
 
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
+      console.error("❌ Erro ao atualizar perfil:", error);
+
+      // Verificar se o erro é de CPF duplicado
+      if (error?.cause?.constraint === "patients_cpf_unique") {
+        return {
+          success: false,
+          error: "Este CPF já está sendo usado por outro paciente",
+        };
+      }
+
+      // Verificar se o erro é de email duplicado
+      if (error?.cause?.constraint === "patients_email_unique") {
+        return {
+          success: false,
+          error: "Este email já está sendo usado por outro paciente",
+        };
+      }
+
       return {
         success: false,
         error: "Erro ao atualizar perfil",

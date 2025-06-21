@@ -1286,7 +1286,16 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                           placeholder="(11) 99999-9999"
                           value={field.value}
                           onValueChange={(values) => {
-                            field.onChange(values.formattedValue);
+                            // Só salvar se o telefone estiver completo (11 dígitos) ou vazio
+                            if (
+                              values.value.length === 11 ||
+                              values.value.length === 0
+                            ) {
+                              field.onChange(values.formattedValue);
+                            } else if (values.value.length > 0) {
+                              // Se tiver dígitos mas não estiver completo, não salvar
+                              field.onChange("");
+                            }
                           }}
                         />
                       </FormControl>
@@ -1456,7 +1465,16 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                             placeholder="123.456.789-00"
                             value={field.value}
                             onValueChange={(values) => {
-                              field.onChange(values.formattedValue);
+                              // Só salvar se o CPF estiver completo (11 dígitos) ou vazio
+                              if (
+                                values.value.length === 11 ||
+                                values.value.length === 0
+                              ) {
+                                field.onChange(values.formattedValue);
+                              } else if (values.value.length > 0) {
+                                // Se tiver dígitos mas não estiver completo, não salvar
+                                field.onChange("");
+                              }
                             }}
                           />
                         </FormControl>
@@ -1479,7 +1497,16 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                             placeholder="123 4567 8901 2345"
                             value={field.value}
                             onValueChange={(values) => {
-                              field.onChange(values.formattedValue);
+                              // Só salvar se o CNS estiver completo (15 dígitos) ou vazio
+                              if (
+                                values.value.length === 15 ||
+                                values.value.length === 0
+                              ) {
+                                field.onChange(values.formattedValue);
+                              } else if (values.value.length > 0) {
+                                // Se tiver dígitos mas não estiver completo, não salvar
+                                field.onChange("");
+                              }
                             }}
                           />
                         </FormControl>
@@ -1957,7 +1984,16 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                             placeholder="(11) 99999-9999"
                             value={field.value}
                             onValueChange={(values) => {
-                              field.onChange(values.formattedValue);
+                              // Só salvar se o telefone estiver completo (11 dígitos) ou vazio
+                              if (
+                                values.value.length === 11 ||
+                                values.value.length === 0
+                              ) {
+                                field.onChange(values.formattedValue);
+                              } else if (values.value.length > 0) {
+                                // Se tiver dígitos mas não estiver completo, não salvar
+                                field.onChange("");
+                              }
                             }}
                           />
                         </FormControl>
@@ -2043,7 +2079,16 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
                               placeholder="123.456.789-00"
                               value={field.value}
                               onValueChange={(values) => {
-                                field.onChange(values.formattedValue);
+                                // Só salvar se o CPF estiver completo (11 dígitos) ou vazio
+                                if (
+                                  values.value.length === 11 ||
+                                  values.value.length === 0
+                                ) {
+                                  field.onChange(values.formattedValue);
+                                } else if (values.value.length > 0) {
+                                  // Se tiver dígitos mas não estiver completo, não salvar
+                                  field.onChange("");
+                                }
                               }}
                             />
                           </FormControl>
