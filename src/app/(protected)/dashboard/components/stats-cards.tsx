@@ -58,17 +58,20 @@ export function StatsCards({
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat) => (
-        <Card key={stat.title} className="transition-shadow hover:shadow-md">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card
+          key={stat.title}
+          className="gap-2 transition-shadow hover:shadow-md"
+        >
+          <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+            <div className={`${stat.bgColor} flex items-center rounded-lg p-2`}>
+              <stat.icon className={`h-4 w-4 ${stat.color}`} />
+            </div>
             <CardTitle className="text-sm font-medium text-gray-600">
               {stat.title}
             </CardTitle>
-            <div className={`${stat.bgColor} rounded-lg p-2`}>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+            <div className="text-2xl font-bold text-gray-700">{stat.value}</div>
           </CardContent>
         </Card>
       ))}
