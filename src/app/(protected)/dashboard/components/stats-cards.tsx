@@ -56,11 +56,11 @@ export function StatsCards({
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat) => (
         <Card
           key={stat.title}
-          className="gap-2 transition-shadow hover:shadow-md"
+          className="gap-0 transition-shadow hover:shadow-md"
         >
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
             <div className={`${stat.bgColor} flex items-center rounded-lg p-2`}>

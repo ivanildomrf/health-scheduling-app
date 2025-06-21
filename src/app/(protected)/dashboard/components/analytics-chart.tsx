@@ -26,7 +26,7 @@ export function AnalyticsChart({ data }: AnalyticsChartProps) {
       </CardHeader>
       <CardContent className="flex flex-1 flex-col">
         {/* Container fixo de 280px para o gráfico */}
-        <div className="relative flex h-72 items-end justify-between gap-4 border-b border-gray-100 pb-2">
+        <div className="relative flex h-full items-end justify-between gap-4 border-b border-gray-100 pb-2">
           {data.map((item, index) => {
             const appointments = Number(item.appointments) || 0;
             const patients = Number(item.patients) || 0;
@@ -49,7 +49,7 @@ export function AnalyticsChart({ data }: AnalyticsChartProps) {
                 <div className="flex h-72 w-full items-end justify-center gap-1">
                   {/* Barra de Agendamentos */}
                   <div
-                    className="group relative w-full max-w-[32px] rounded-t-sm bg-blue-500 shadow-sm transition-all hover:bg-blue-600"
+                    className="group relative w-full max-w-[32px] rounded-t-sm bg-[#3399CC] shadow-sm transition-all hover:bg-blue-600"
                     style={{
                       height: `${appointmentHeight}px`,
                       minHeight: appointments > 0 ? "8px" : "4px",

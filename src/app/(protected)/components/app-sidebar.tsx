@@ -89,8 +89,8 @@ export function AppSidebar() {
     });
   };
   return (
-    <Sidebar>
-      <SidebarHeader className="flex items-center justify-center border-b p-4">
+    <Sidebar className="border-r border-blue-100/50 bg-white/80 backdrop-blur-sm">
+      <SidebarHeader className="flex items-center justify-center border-b border-blue-100/50 p-4">
         <Image
           src={APP_CONFIG.logo.local}
           alt={APP_CONFIG.name}
@@ -127,7 +127,7 @@ export function AppSidebar() {
       <SidebarFooter>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <div className="flex cursor-pointer items-center gap-2 rounded-md p-2 hover:bg-gray-100">
+            <div className="flex cursor-pointer items-center gap-2 rounded-md p-2 hover:bg-blue-50/70">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-blue-100 text-blue-600">
                   {session.data?.user?.name

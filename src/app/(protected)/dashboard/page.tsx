@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AnalyticsChart } from "./components/analytics-chart";
 import { RecentAppointments } from "./components/recent-appointments";
+import { RevenueChart } from "./components/revenue-chart";
 import { SpecialityStats } from "./components/speciality-stats";
 import { StatsCards } from "./components/stats-cards";
 import { TopProfessionals } from "./components/top-professionals";
@@ -41,10 +42,9 @@ const DashboardPage = async () => {
 
   return (
     <PageContainer>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Header */}
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600">
             Acesse uma visão detalhada das principais métricas e resultados da
             sua clínica
@@ -59,26 +59,45 @@ const DashboardPage = async () => {
           totalProfessionals={analytics.totalProfessionals}
         />
 
-        {/* Grid Layout para o resto do conteúdo */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Gráfico principal - ocupa 2 colunas */}
-          <div className="h-96 lg:col-span-2">
+        {/* Grid de gráficos principais */}
+        <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
+          {/* Gráfico de Agendamentos e Faturamento - ocupa 2 colunas */}
+          <div className="h-full lg:col-span-1">
+            <RevenueChart
+              dailyAppointmentsData={analytics.dailyAppointmentsData.map(
+                (item) => ({
+                  date: item.date,
+                  appointments: item.appointments,
+                  revenue: Number(item.revenue) || 0,
+                }),
+              )}
+            />
+          </div>
+
+          {/* Gráfico de Evolução Mensal */}
+          <div className="h-full">
             <AnalyticsChart data={analytics.monthlyData} />
           </div>
+        </div>
 
-          {/* Profissionais Top - altura fixa para alinhamento */}
-          <div className="h-96 lg:col-span-1">
-            <TopProfessionals professionals={analytics.topProfessionals} />
-          </div>
-
-          {/* Agendamentos Recentes */}
-          <div className="lg:col-span-2">
+        {/* Grid Layout para o resto do conteúdo */}
+        <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
+          {/* Agendamentos Recentes - ocupa 2 colunas */}
+          <div className="h-full lg:col-span-1">
             <RecentAppointments appointments={analytics.recentAppointments} />
           </div>
 
-          {/* Estatísticas por Especialidade */}
-          <div className="lg:col-span-1">
-            <SpecialityStats specialities={analytics.specialityStats} />
+          {/* Coluna direita com Médicos e Especialidades */}
+          <div className="flex h-full gap-4 lg:col-span-1">
+            {/* Profissionais Top */}
+            <div className="min-h-0 flex-1">
+              <TopProfessionals professionals={analytics.topProfessionals} />
+            </div>
+
+            {/* Estatísticas por Especialidade */}
+            <div className="min-h-0 flex-1">
+              <SpecialityStats specialities={analytics.specialityStats} />
+            </div>
           </div>
         </div>
       </div>

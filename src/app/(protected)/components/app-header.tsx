@@ -28,7 +28,7 @@ export function AppHeader() {
   };
 
   return (
-    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 w-full border-b backdrop-blur">
+    <header className="sticky top-0 z-40 w-full border-b border-blue-100/50 bg-white/80 backdrop-blur-sm">
       <div className="container flex h-20 items-center justify-between px-4">
         {/* Left side - Sidebar trigger */}
         <div className="flex items-center gap-2">
@@ -44,12 +44,16 @@ export function AppHeader() {
           {userId && (
             <NotificationDropdown
               userId={userId}
-              className="hover:bg-gray-100"
+              className="hover:bg-blue-50/70"
             />
           )}
 
           {/* Settings */}
-          <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 w-9 p-0 hover:bg-blue-50/70"
+          >
             <Settings className="h-5 w-5" />
           </Button>
         </div>

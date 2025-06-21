@@ -5,7 +5,6 @@ import {
   PageHeaderActions,
   PageHeaderContent,
   PageHeaderDescription,
-  PageHeaderTitle,
 } from "@/components/ui/page-container";
 import { db } from "@/db";
 import { professionalsTable } from "@/db/schema";
@@ -33,7 +32,6 @@ const ProfessionalsPage = async () => {
     <PageContainer>
       <PageHeader>
         <PageHeaderContent>
-          <PageHeaderTitle>Profissionais</PageHeaderTitle>
           <PageHeaderDescription>
             Aqui você pode gerenciar os profissionais
           </PageHeaderDescription>

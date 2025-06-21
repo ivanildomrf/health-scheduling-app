@@ -5,7 +5,6 @@ import {
   PageHeaderActions,
   PageHeaderContent,
   PageHeaderDescription,
-  PageHeaderTitle,
 } from "@/components/ui/page-container";
 import { db } from "@/db";
 import {
@@ -78,7 +77,6 @@ const AppointmentsPage = async () => {
     <PageContainer>
       <PageHeader>
         <PageHeaderContent>
-          <PageHeaderTitle>Agendamentos</PageHeaderTitle>
           <PageHeaderDescription>
             Aqui você pode gerenciar os agendamentos da clínica
           </PageHeaderDescription>

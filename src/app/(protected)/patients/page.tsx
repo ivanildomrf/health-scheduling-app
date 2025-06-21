@@ -6,7 +6,6 @@ import {
   PageHeaderActions,
   PageHeaderContent,
   PageHeaderDescription,
-  PageHeaderTitle,
 } from "@/components/ui/page-container";
 import { db } from "@/db";
 import { patientsTable } from "@/db/schema";
@@ -34,7 +33,6 @@ const PatientsPage = async () => {
     <PageContainer>
       <PageHeader>
         <PageHeaderContent>
-          <PageHeaderTitle>Pacientes</PageHeaderTitle>
           <PageHeaderDescription>
             Aqui você pode gerenciar os pacientes
           </PageHeaderDescription>

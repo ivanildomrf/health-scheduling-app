@@ -8,7 +8,7 @@ import {
 } from "@/db/schema";
 import { actionClient } from "@/lib/safe-action";
 import dayjs from "dayjs";
-import { and, count, desc, eq, gte, sql, sum } from "drizzle-orm";
+import { and, count, desc, eq, gte, lte, sql, sum } from "drizzle-orm";
 import { z } from "zod";
 
 const inputSchema = z.object({
@@ -20,6 +20,11 @@ export interface DashboardAnalytics {
   totalAppointments: number;
   totalPatients: number;
   totalProfessionals: number;
+  dailyAppointmentsData: Array<{
+    date: string;
+    appointments: number;
+    revenue: number;
+  }>;
   monthlyData: Array<{
     month: string;
     appointments: number;
@@ -200,6 +205,29 @@ export const getDashboardAnalytics = actionClient
         .limit(5),
     ]);
 
+    const chartStartDate = dayjs().subtract(10, "days").startOf("day").toDate();
+    const chartEndDate = dayjs().add(10, "days").endOf("day").toDate();
+
+    const dailyAppointmentsData = await db
+      .select({
+        date: sql<string>`${appointmentsTable.date}::date`.as("date"),
+        appointments: count(appointmentsTable.id),
+        revenue:
+          sql<number>`COALESCE(SUM(${appointmentsTable.appointmentPriceInCents}), 0)`.as(
+            "revenue",
+          ),
+      })
+      .from(appointmentsTable)
+      .where(
+        and(
+          eq(appointmentsTable.clinicId, clinicId),
+          gte(appointmentsTable.date, chartStartDate),
+          lte(appointmentsTable.date, chartEndDate),
+        ),
+      )
+      .groupBy(sql<string>`${appointmentsTable.date}::date`)
+      .orderBy(sql<string>`${appointmentsTable.date}::date`);
+
     // Processar dados mensais - mostrar últimos 6 meses mas com dados dos últimos 12 meses disponíveis
     const monthlyData = [];
     for (let i = 5; i >= 0; i--) {
@@ -226,6 +254,11 @@ export const getDashboardAnalytics = actionClient
       totalAppointments: Number(appointmentsResult?.count) || 0,
       totalPatients: Number(patientsResult?.count) || 0,
       totalProfessionals: Number(professionalsResult?.count) || 0,
+      dailyAppointmentsData: dailyAppointmentsData.map((item) => ({
+        date: item.date,
+        appointments: item.appointments,
+        revenue: Number(item.revenue) || 0,
+      })),
       monthlyData,
       topProfessionals: topProfessionals.map((prof) => ({
         ...prof,

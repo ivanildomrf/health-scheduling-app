@@ -32,9 +32,6 @@ export default async function EmailTemplatesPage() {
     <PageContainer>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Templates de Email
-          </h1>
           <p className="text-muted-foreground">
             Gerencie os templates de email personalizados da sua clínica
           </p>
