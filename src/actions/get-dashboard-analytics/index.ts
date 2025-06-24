@@ -61,6 +61,9 @@ export const getDashboardAnalytics = actionClient
       .startOf("month")
       .toDate();
 
+    const chartStartDate = dayjs().subtract(10, "days").startOf("day").toDate();
+    const chartEndDate = dayjs().add(10, "days").endOf("day").toDate();
+
     // Métricas principais
     const [
       [revenueResult],
@@ -72,6 +75,7 @@ export const getDashboardAnalytics = actionClient
       topProfessionals,
       recentAppointments,
       specialityStats,
+      dailyAppointmentsData,
     ] = await Promise.all([
       // Revenue
       db
@@ -203,30 +207,28 @@ export const getDashboardAnalytics = actionClient
         .groupBy(professionalsTable.speciality)
         .orderBy(desc(count(appointmentsTable.id)))
         .limit(5),
-    ]);
 
-    const chartStartDate = dayjs().subtract(10, "days").startOf("day").toDate();
-    const chartEndDate = dayjs().add(10, "days").endOf("day").toDate();
-
-    const dailyAppointmentsData = await db
-      .select({
-        date: sql<string>`${appointmentsTable.date}::date`.as("date"),
-        appointments: count(appointmentsTable.id),
-        revenue:
-          sql<number>`COALESCE(SUM(${appointmentsTable.appointmentPriceInCents}), 0)`.as(
-            "revenue",
+      // Daily Appointments Data
+      db
+        .select({
+          date: sql<string>`${appointmentsTable.date}::date`.as("date"),
+          appointments: count(appointmentsTable.id),
+          revenue:
+            sql<number>`COALESCE(SUM(${appointmentsTable.appointmentPriceInCents}), 0)`.as(
+              "revenue",
+            ),
+        })
+        .from(appointmentsTable)
+        .where(
+          and(
+            eq(appointmentsTable.clinicId, clinicId),
+            gte(appointmentsTable.date, chartStartDate),
+            lte(appointmentsTable.date, chartEndDate),
           ),
-      })
-      .from(appointmentsTable)
-      .where(
-        and(
-          eq(appointmentsTable.clinicId, clinicId),
-          gte(appointmentsTable.date, chartStartDate),
-          lte(appointmentsTable.date, chartEndDate),
-        ),
-      )
-      .groupBy(sql<string>`${appointmentsTable.date}::date`)
-      .orderBy(sql<string>`${appointmentsTable.date}::date`);
+        )
+        .groupBy(sql<string>`${appointmentsTable.date}::date`)
+        .orderBy(sql<string>`${appointmentsTable.date}::date`),
+    ]);
 
     // Processar dados mensais - mostrar últimos 6 meses mas com dados dos últimos 12 meses disponíveis
     const monthlyData = [];
