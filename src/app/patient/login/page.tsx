@@ -1,7 +1,9 @@
-import { getPatientSession } from "@/helpers/patient-session";
-import { APP_CONFIG } from "@/lib/constants";
 import Image from "next/image";
 import { redirect } from "next/navigation";
+
+import { getPatientSession } from "@/helpers/patient-session";
+import { APP_CONFIG } from "@/lib/constants";
+
 import { PatientLoginForm } from "./components/patient-login-form";
 
 // Forçar renderização dinâmica

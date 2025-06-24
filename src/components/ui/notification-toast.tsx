@@ -1,3 +1,6 @@
+import { Eye, X } from "lucide-react";
+import { toast } from "sonner";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { NotificationType } from "@/lib/types/notifications";
@@ -6,8 +9,6 @@ import {
   notificationIcons,
 } from "@/lib/types/notifications";
 import { cn } from "@/lib/utils";
-import { Eye, X } from "lucide-react";
-import { toast } from "sonner";
 
 interface NotificationToastData {
   id: string;

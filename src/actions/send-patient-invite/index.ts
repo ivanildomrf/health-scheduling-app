@@ -1,9 +1,10 @@
-import { db } from "@/db";
-import { patientsTable } from "@/db/schema";
-import { actionClient } from "@/lib/safe-action";
 import { randomUUID } from "crypto";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+
+import { db } from "@/db";
+import { patientsTable } from "@/db/schema";
+import { actionClient } from "@/lib/safe-action";
 
 const sendInviteSchema = z.object({
   patientId: z.string().uuid(),

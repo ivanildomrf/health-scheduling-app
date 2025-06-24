@@ -1,3 +1,7 @@
+import { count, desc, eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
 import {
   PageContainer,
   PageContent,
@@ -13,9 +17,7 @@ import {
   professionalsTable,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { count, desc, eq } from "drizzle-orm";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+
 import AddAppointmentButton from "./components/add-appointment-button";
 import { AppointmentsTable } from "./components/appointments-table";
 

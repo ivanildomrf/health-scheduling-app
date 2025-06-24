@@ -1,6 +1,7 @@
+import { eq } from "drizzle-orm";
+
 import { db } from "@/db";
 import { clinicsTable, planFeatureLimitsTable } from "@/db/schema";
-import { eq } from "drizzle-orm";
 
 export interface PlanLimits {
   maxProfessionals: number | null; // null = unlimited

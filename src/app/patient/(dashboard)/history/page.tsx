@@ -1,13 +1,14 @@
+import dayjs from "dayjs";
+import { eq } from "drizzle-orm";
+import { Calendar, Clock, FileText, User } from "lucide-react";
+import { redirect } from "next/navigation";
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { db } from "@/db";
 import { appointmentsTable } from "@/db/schema";
 import { formatCurrencyInCentsToBRL } from "@/helpers/currency";
 import { getPatientSession } from "@/helpers/patient-session";
-import dayjs from "dayjs";
-import { eq } from "drizzle-orm";
-import { Calendar, Clock, FileText, User } from "lucide-react";
-import { redirect } from "next/navigation";
 
 // Forçar renderização dinâmica
 export const dynamic = "force-dynamic";

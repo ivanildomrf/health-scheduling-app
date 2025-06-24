@@ -1,9 +1,11 @@
 "use client";
 
+import "dayjs/locale/pt-br";
+
+import dayjs from "dayjs";
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import dayjs from "dayjs";
-import "dayjs/locale/pt-br";
 
 // Configurar locale para português
 dayjs.locale("pt-br");

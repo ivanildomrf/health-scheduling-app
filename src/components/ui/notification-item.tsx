@@ -1,3 +1,8 @@
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Eye, Trash2 } from "lucide-react";
+import { useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,10 +19,6 @@ import {
   targetTypeLabels,
 } from "@/lib/types/notifications";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { Eye, Trash2 } from "lucide-react";
-import { useState } from "react";
 
 interface NotificationItemProps {
   notification: Notification;

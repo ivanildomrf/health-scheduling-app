@@ -1,8 +1,10 @@
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+
 import { getClinicEmailSettings } from "@/actions/get-clinic-email-settings";
 import { Button } from "@/components/ui/button";
 import { PageContainer } from "@/components/ui/page-container";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
+
 import { EmailSettingsForm } from "./_components/email-settings-form";
 
 export default async function EmailSettingsPage() {

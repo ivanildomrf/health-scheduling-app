@@ -1,5 +1,11 @@
 "use server";
 
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import { and, eq, ne } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+
 import { db } from "@/db";
 import {
   appointmentsTable,
@@ -9,11 +15,7 @@ import {
 import { createAppointmentConfirmedNotification } from "@/helpers/notifications";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import { and, eq, ne } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
+
 import { createAppointmentSchema } from "./schema";
 
 dayjs.extend(utc);

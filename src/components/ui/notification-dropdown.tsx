@@ -1,5 +1,15 @@
 "use client";
 
+import {
+  Bell,
+  CheckCheck,
+  ExternalLink,
+  RefreshCw,
+  Settings,
+} from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,15 +22,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications } from "@/hooks/use-notifications";
 import { cn } from "@/lib/utils";
-import {
-  Bell,
-  CheckCheck,
-  ExternalLink,
-  RefreshCw,
-  Settings,
-} from "lucide-react";
-import Link from "next/link";
-import { useState } from "react";
+
 import { NotificationItem } from "./notification-item";
 
 interface NotificationDropdownProps {

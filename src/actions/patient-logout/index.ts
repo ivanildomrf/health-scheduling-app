@@ -1,10 +1,11 @@
 "use server";
 
-import { patientAuth } from "@/lib/patient-auth";
-import { actionClient } from "@/lib/safe-action";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+
+import { patientAuth } from "@/lib/patient-auth";
+import { actionClient } from "@/lib/safe-action";
 
 const patientLogoutSchema = z.object({});
 

@@ -1,6 +1,6 @@
 // Hooks
-export { useNotifications } from "@/hooks/use-notifications";
 export { useNotificationToast } from "../notification-toast";
+export { useNotifications } from "@/hooks/use-notifications";
 
 // Componentes principais
 export { NotificationCenter } from "../notification-center";
@@ -37,7 +37,6 @@ export type {
   NotificationType,
   NotificationWithMeta,
 } from "@/lib/types/notifications";
-
 export {
   defaultNotificationConfigs,
   notificationColors,

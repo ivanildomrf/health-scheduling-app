@@ -1,11 +1,12 @@
 "use client";
 
+import { Wand2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAction } from "next-safe-action/hooks";
+import { toast } from "sonner";
+
 import { createDefaultEmailTemplates } from "@/actions/create-default-email-templates";
 import { Button } from "@/components/ui/button";
-import { Wand2 } from "lucide-react";
-import { useAction } from "next-safe-action/hooks";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
 export function CreateDefaultTemplatesButton() {
   const router = useRouter();

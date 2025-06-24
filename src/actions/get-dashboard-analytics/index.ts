@@ -1,5 +1,9 @@
 "use server";
 
+import dayjs from "dayjs";
+import { and, count, desc, eq, gte, lte, sql, sum } from "drizzle-orm";
+import { z } from "zod";
+
 import { db } from "@/db";
 import {
   appointmentsTable,
@@ -7,9 +11,6 @@ import {
   professionalsTable,
 } from "@/db/schema";
 import { actionClient } from "@/lib/safe-action";
-import dayjs from "dayjs";
-import { and, count, desc, eq, gte, lte, sql, sum } from "drizzle-orm";
-import { z } from "zod";
 
 const inputSchema = z.object({
   clinicId: z.string().uuid(),

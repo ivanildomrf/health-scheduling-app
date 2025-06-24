@@ -1,3 +1,8 @@
+import { asc, eq } from "drizzle-orm";
+import { Check } from "lucide-react";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
 import {
   PageContainer,
   PageContent,
@@ -8,10 +13,7 @@ import {
 import { db } from "@/db";
 import { clinicsTable, planFeatureLimitsTable, plansTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { asc, eq } from "drizzle-orm";
-import { Check } from "lucide-react";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+
 import PaymentFeedback from "./_components/payment-feedback";
 import PlanCard from "./_components/plan-card";
 

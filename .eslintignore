@@ -1,0 +1,38 @@
+# Build output
+.next
+.next/
+.next/**/*
+.vercel/
+out/
+
+# Dependencies
+node_modules/
+
+# Auto-generated files
+**/*.d.ts
+
+# Generated types
+.next/types/
+.next/types/**/*
+
+# Drizzle generated files
+drizzle/
+drizzle/**/*
+
+# Environment files
+.env*
+
+# Package manager files
+package-lock.json
+yarn.lock
+
+# IDE/Editor files
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# TypeScript build
+dist/ 

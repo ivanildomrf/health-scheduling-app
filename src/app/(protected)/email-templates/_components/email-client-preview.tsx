@@ -1,7 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Archive,
   ArrowLeft,
@@ -16,6 +14,9 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface EmailClientPreviewProps {
   subject: string;

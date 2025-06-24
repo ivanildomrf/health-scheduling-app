@@ -1,9 +1,10 @@
-import { db } from "@/db";
-import { appointmentsTable, notificationsTable } from "@/db/schema";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { NextRequest } from "next/server";
+
+import { db } from "@/db";
+import { appointmentsTable, notificationsTable } from "@/db/schema";
 
 dayjs.extend(utc);
 

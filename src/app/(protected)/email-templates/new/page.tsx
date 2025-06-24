@@ -1,4 +1,5 @@
 import { PageContainer } from "@/components/ui/page-container";
+
 import { EmailTemplateEditor } from "../_components/email-template-editor";
 
 export default function NewEmailTemplatePage() {

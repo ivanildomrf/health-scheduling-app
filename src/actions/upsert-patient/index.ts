@@ -1,14 +1,16 @@
 "use server";
 
+import { hash } from "bcryptjs";
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+
 import { db } from "@/db";
 import { patientsTable } from "@/db/schema";
 import { createNewPatientNotification } from "@/helpers/notifications";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
-import { hash } from "bcryptjs";
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
+
 import { upsertPatientSchema } from "./schema";
 
 export const upsertPatient = actionClient

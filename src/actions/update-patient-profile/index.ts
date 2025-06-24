@@ -1,12 +1,13 @@
 "use server";
 
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
 import { db } from "@/db";
 import { patientsTable } from "@/db/schema";
 import { getPatientSession } from "@/helpers/patient-session";
 import { actionClient } from "@/lib/safe-action";
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
 const updatePatientProfileSchema = z.object({
   patientId: z.string().uuid(),

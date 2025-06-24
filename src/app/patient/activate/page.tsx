@@ -1,7 +1,9 @@
-import { db } from "@/db";
-import { patientsTable } from "@/db/schema";
 import { and, eq, gt, isNotNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
+
+import { db } from "@/db";
+import { patientsTable } from "@/db/schema";
+
 import { ActivateAccountForm } from "./components/activate-account-form";
 
 interface ActivatePageProps {

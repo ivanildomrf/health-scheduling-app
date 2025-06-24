@@ -1,11 +1,13 @@
 "use client";
 
-import { getAppointments } from "@/actions/get-appointments";
-import { DataTable } from "@/components/ui/data-table";
-import { Pagination } from "@/components/ui/pagination";
 import { useAction } from "next-safe-action/hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+
+import { getAppointments } from "@/actions/get-appointments";
+import { DataTable } from "@/components/ui/data-table";
+import { Pagination } from "@/components/ui/pagination";
+
 import { AppointmentsProvider } from "./appointments-context";
 import { appointmentTableColumns } from "./table-column";
 

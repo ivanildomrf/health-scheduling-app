@@ -1,4 +1,5 @@
 import { eq, isNull } from "drizzle-orm";
+
 import { db } from "../src/db/index";
 import { clinicsTable, plansTable } from "../src/db/schema";
 

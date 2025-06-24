@@ -1,14 +1,5 @@
 "use client";
 
-import { createTestNotifications } from "@/actions/create-test-notifications";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   AlertCircle,
   Bell,
@@ -20,6 +11,16 @@ import {
 } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
 import { toast } from "sonner";
+
+import { createTestNotifications } from "@/actions/create-test-notifications";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 interface NotificationTestPanelProps {
   userId: string;

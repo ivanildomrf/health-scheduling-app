@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { patientAuth, PatientSession } from "./patient-auth";
 
 export async function validatePatientSession(

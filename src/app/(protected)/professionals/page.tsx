@@ -1,3 +1,7 @@
+import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
 import {
   PageContainer,
   PageContent,
@@ -9,9 +13,7 @@ import {
 import { db } from "@/db";
 import { professionalsTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { eq } from "drizzle-orm";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+
 import AddProfessionalButton from "./components/add-professional-button";
 import ProfessionalCard from "./components/professional-card";
 

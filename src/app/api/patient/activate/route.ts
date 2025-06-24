@@ -1,9 +1,10 @@
-import { db } from "@/db";
-import { patientsTable } from "@/db/schema";
 import { hash } from "bcryptjs";
 import { and, eq, gt, isNotNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+
+import { db } from "@/db";
+import { patientsTable } from "@/db/schema";
 
 const activateSchema = z.object({
   patientId: z.string().uuid(),

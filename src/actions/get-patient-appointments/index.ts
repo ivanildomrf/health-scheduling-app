@@ -1,11 +1,12 @@
 "use server";
 
+import { and, desc, eq, sql } from "drizzle-orm";
+import { z } from "zod";
+
 import { db } from "@/db";
 import { appointmentsTable } from "@/db/schema";
 import { getPatientSession } from "@/helpers/patient-session";
 import { actionClient } from "@/lib/safe-action";
-import { and, desc, eq, sql } from "drizzle-orm";
-import { z } from "zod";
 
 const getPatientAppointmentsSchema = z.object({
   status: z.enum(["active", "cancelled", "expired", "completed"]).optional(),

@@ -1,12 +1,13 @@
+import { useAction } from "next-safe-action/hooks";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+
 import { deleteNotification } from "@/actions/delete-notification";
 import { getNotifications } from "@/actions/get-notifications";
 import { getUnreadNotificationsCount } from "@/actions/get-unread-notifications-count";
 import { markAllNotificationsRead } from "@/actions/mark-all-notifications-read";
 import { markNotificationRead } from "@/actions/mark-notification-read";
 import type { Notification } from "@/lib/types/notifications";
-import { useAction } from "next-safe-action/hooks";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
 
 interface UseNotificationsProps {
   userId: string;

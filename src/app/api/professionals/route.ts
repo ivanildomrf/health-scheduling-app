@@ -1,9 +1,10 @@
-import { db } from "@/db";
-import { professionalsTable } from "@/db/schema";
-import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+
+import { db } from "@/db";
+import { professionalsTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
 
 export async function GET() {
   try {

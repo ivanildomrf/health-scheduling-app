@@ -1,11 +1,12 @@
 "use server";
 
-import { patientAuth } from "@/lib/patient-auth";
-import { actionClient } from "@/lib/safe-action";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+
+import { patientAuth } from "@/lib/patient-auth";
+import { actionClient } from "@/lib/safe-action";
 
 const patientLoginSchema = z.object({
   email: z.string().email("Email inválido"),

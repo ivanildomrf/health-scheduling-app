@@ -1,5 +1,18 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import { CalendarIcon } from "lucide-react";
+import { useAction } from "next-safe-action/hooks";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { NumericFormat } from "react-number-format";
+import { toast } from "sonner";
+import { z } from "zod";
+
 import { createAppointment } from "@/actions/create-appointment";
 import { getProfessionalAvailability } from "@/actions/get-professional-availability";
 import { Button } from "@/components/ui/button";
@@ -35,18 +48,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { patientsTable, professionalsTable } from "@/db/schema";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import { CalendarIcon } from "lucide-react";
-import { useAction } from "next-safe-action/hooks";
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { NumericFormat } from "react-number-format";
-import { toast } from "sonner";
-import { z } from "zod";
 
 dayjs.extend(utc);
 

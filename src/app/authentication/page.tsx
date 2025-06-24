@@ -1,9 +1,11 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { auth } from "@/lib/auth";
-import { APP_CONFIG } from "@/lib/constants";
 import { headers } from "next/headers";
 import Image from "next/image";
 import { redirect } from "next/navigation";
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { auth } from "@/lib/auth";
+import { APP_CONFIG } from "@/lib/constants";
+
 import SignInForm from "./components/sign-in-form";
 import SignUpForm from "./components/sign-up-form";
 

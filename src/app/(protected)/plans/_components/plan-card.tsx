@@ -1,5 +1,10 @@
 "use client";
 
+import { loadStripe } from "@stripe/stripe-js";
+import { Check, Loader2 } from "lucide-react";
+import { useAction } from "next-safe-action/hooks";
+import { toast } from "sonner";
+
 import { createStripeCheckout } from "@/actions/create-stripe-checkout";
 import { upgradePlan } from "@/actions/upgrade-plan";
 import { Badge } from "@/components/ui/badge";
@@ -13,10 +18,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatCurrency } from "@/helpers/currency";
-import { loadStripe } from "@stripe/stripe-js";
-import { Check, Loader2 } from "lucide-react";
-import { useAction } from "next-safe-action/hooks";
-import { toast } from "sonner";
 
 interface Plan {
   id: string;

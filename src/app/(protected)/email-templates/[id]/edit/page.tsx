@@ -1,6 +1,8 @@
+import { notFound } from "next/navigation";
+
 import { getEmailTemplateById } from "@/actions/get-email-templates";
 import { PageContainer } from "@/components/ui/page-container";
-import { notFound } from "next/navigation";
+
 import { EmailTemplateEditor } from "../../_components/email-template-editor";
 
 interface EmailTemplateEditPageProps {

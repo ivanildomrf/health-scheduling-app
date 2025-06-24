@@ -1,3 +1,6 @@
+import { Mail, Plus, Settings } from "lucide-react";
+import Link from "next/link";
+
 import { getEmailTemplates } from "@/actions/get-email-templates";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,8 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PageContainer } from "@/components/ui/page-container";
-import { Mail, Plus, Settings } from "lucide-react";
-import Link from "next/link";
+
 import { CreateDefaultTemplatesButton } from "./_components/create-default-templates-button";
 import { EmailTemplatesList } from "./_components/email-templates-list";
 

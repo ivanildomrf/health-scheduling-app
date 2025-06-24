@@ -1,14 +1,16 @@
 "use server";
 
-import { db } from "@/db";
-import { appointmentsTable, professionalsTable } from "@/db/schema";
-import { auth } from "@/lib/auth";
-import { actionClient } from "@/lib/safe-action";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { headers } from "next/headers";
+
+import { db } from "@/db";
+import { appointmentsTable, professionalsTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { actionClient } from "@/lib/safe-action";
+
 import { getProfessionalAvailabilitySchema } from "./schema";
 
 dayjs.extend(utc);

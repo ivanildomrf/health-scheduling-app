@@ -1,10 +1,11 @@
 "use server";
 
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+
 import { db } from "@/db";
 import { notificationsTable } from "@/db/schema";
 import { actionClient } from "@/lib/safe-action";
-import { eq } from "drizzle-orm";
-import { z } from "zod";
 
 const markAllNotificationsReadSchema = z.object({
   userId: z.string().min(1, "ID do usuário é obrigatório"),

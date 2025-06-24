@@ -1,15 +1,17 @@
 "use server";
 
-import { db } from "@/db";
-import { professionalsTable } from "@/db/schema";
-import { createNewProfessionalNotification } from "@/helpers/notifications";
-import { auth } from "@/lib/auth";
-import { actionClient } from "@/lib/safe-action";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+
+import { db } from "@/db";
+import { professionalsTable } from "@/db/schema";
+import { createNewProfessionalNotification } from "@/helpers/notifications";
+import { auth } from "@/lib/auth";
+import { actionClient } from "@/lib/safe-action";
+
 import { upsertProfessionalSchema } from "./schema";
 
 dayjs.extend(utc);

@@ -1,5 +1,9 @@
 "use client";
 
+import dayjs from "dayjs";
+import { useAction } from "next-safe-action/hooks";
+import { toast } from "sonner";
+
 import { cancelPatientAppointment } from "@/actions/cancel-patient-appointment";
 import {
   AlertDialog,
@@ -12,9 +16,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import dayjs from "dayjs";
-import { useAction } from "next-safe-action/hooks";
-import { toast } from "sonner";
 
 interface CancelAppointmentModalProps {
   appointmentId: string;

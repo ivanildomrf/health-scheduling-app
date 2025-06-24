@@ -1,8 +1,10 @@
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
 import { getDashboardAnalytics } from "@/actions/get-dashboard-analytics";
 import { PageContainer } from "@/components/ui/page-container";
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+
 import { AnalyticsChart } from "./components/analytics-chart";
 import { RecentAppointments } from "./components/recent-appointments";
 import { RevenueChart } from "./components/revenue-chart";

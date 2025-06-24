@@ -1,9 +1,26 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  ArrowLeft,
+  Code,
+  Eye,
+  Info,
+  Lightbulb,
+  Save,
+  Type,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAction } from "next-safe-action/hooks";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+
 import { upsertEmailTemplate } from "@/actions/upsert-email-template";
 import {
-  upsertEmailTemplateSchema,
   type UpsertEmailTemplateSchema,
+  upsertEmailTemplateSchema,
 } from "@/actions/upsert-email-template/schema";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,22 +56,7 @@ import {
   AVAILABLE_VARIABLES,
   EmailTemplateEngine,
 } from "@/helpers/email-template-engine";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  ArrowLeft,
-  Code,
-  Eye,
-  Info,
-  Lightbulb,
-  Save,
-  Type,
-} from "lucide-react";
-import { useAction } from "next-safe-action/hooks";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+
 import { EmailClientPreview } from "./email-client-preview";
 
 const EMAIL_TYPE_OPTIONS = [

@@ -1,5 +1,7 @@
-import { getPatientSession } from "@/helpers/patient-session";
 import { redirect } from "next/navigation";
+
+import { getPatientSession } from "@/helpers/patient-session";
+
 import { PatientHeader } from "../components/patient-header";
 import { PatientSidebar } from "../components/patient-sidebar";
 

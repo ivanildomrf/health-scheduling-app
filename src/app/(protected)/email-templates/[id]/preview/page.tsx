@@ -1,3 +1,7 @@
+import { ArrowLeft, Edit, Mail } from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
 import { getEmailTemplateById } from "@/actions/get-email-templates";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,9 +13,7 @@ import {
 } from "@/components/ui/card";
 import { PageContainer } from "@/components/ui/page-container";
 import { EmailTemplateEngine } from "@/helpers/email-template-engine";
-import { ArrowLeft, Edit, Mail } from "lucide-react";
-import Link from "next/link";
-import { notFound } from "next/navigation";
+
 import { EmailClientPreview } from "../../_components/email-client-preview";
 
 interface EmailTemplatePreviewPageProps {

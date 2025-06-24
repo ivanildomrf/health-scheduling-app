@@ -1,5 +1,21 @@
 "use client";
 
+import "dayjs/locale/pt-br";
+
+import dayjs from "dayjs";
+import {
+  Calendar,
+  Edit,
+  Eye,
+  Mail,
+  MoreHorizontal,
+  Trash2,
+} from "lucide-react";
+import Link from "next/link";
+import { useAction } from "next-safe-action/hooks";
+import { useState } from "react";
+import { toast } from "sonner";
+
 import { deleteEmailTemplate } from "@/actions/delete-email-template";
 import {
   AlertDialog,
@@ -26,20 +42,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import dayjs from "dayjs";
-import "dayjs/locale/pt-br";
-import {
-  Calendar,
-  Edit,
-  Eye,
-  Mail,
-  MoreHorizontal,
-  Trash2,
-} from "lucide-react";
-import { useAction } from "next-safe-action/hooks";
-import Link from "next/link";
-import { useState } from "react";
-import { toast } from "sonner";
 
 dayjs.locale("pt-br");
 

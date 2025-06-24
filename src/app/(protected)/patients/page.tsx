@@ -1,3 +1,7 @@
+import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
 import { DataTable } from "@/components/ui/data-table";
 import {
   PageContainer,
@@ -10,9 +14,7 @@ import {
 import { db } from "@/db";
 import { patientsTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { eq } from "drizzle-orm";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+
 import AddPatientButton from "./components/add-patient-button";
 import { patientTableColumns } from "./components/table-column";
 

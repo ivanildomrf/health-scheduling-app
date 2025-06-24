@@ -1,9 +1,10 @@
 "use client";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle, XCircle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const PaymentFeedback = () => {
   const searchParams = useSearchParams();

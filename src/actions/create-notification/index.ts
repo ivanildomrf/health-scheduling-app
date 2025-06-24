@@ -1,9 +1,10 @@
 "use server";
 
+import { z } from "zod";
+
 import { db } from "@/db";
 import { notificationsTable } from "@/db/schema";
 import { actionClient } from "@/lib/safe-action";
-import { z } from "zod";
 
 const createNotificationSchema = z.object({
   type: z.enum([

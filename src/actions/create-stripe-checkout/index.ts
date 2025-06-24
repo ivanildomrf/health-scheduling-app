@@ -1,13 +1,14 @@
 "use server";
 
-import { db } from "@/db";
-import { clinicsTable } from "@/db/schema";
-import { auth } from "@/lib/auth";
-import { actionClient } from "@/lib/safe-action";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import Stripe from "stripe";
 import { z } from "zod";
+
+import { db } from "@/db";
+import { clinicsTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { actionClient } from "@/lib/safe-action";
 
 const createStripeCheckoutSchema = z.object({
   stripePriceId: z.string(),
@@ -83,8 +84,8 @@ export const createStripeCheckout = actionClient
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/plans?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/plans?canceled=true`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?canceled=true`,
       metadata: {
         clinicId: clinic.id,
         userId: session.user.id,

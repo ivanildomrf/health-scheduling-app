@@ -1,10 +1,11 @@
 "use server";
 
+import { z } from "zod";
+
 import { db } from "@/db";
 import { notificationsTable } from "@/db/schema";
 import { actionClient } from "@/lib/safe-action";
 import type { NotificationType } from "@/lib/types/notifications";
-import { z } from "zod";
 
 const createTestNotificationsSchema = z.object({
   userId: z.string().min(1, "ID do usuário é obrigatório"),

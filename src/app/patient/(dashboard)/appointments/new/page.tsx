@@ -1,8 +1,10 @@
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+
 import { db } from "@/db";
 import { professionalsTable } from "@/db/schema";
 import { getPatientSession } from "@/helpers/patient-session";
-import { eq } from "drizzle-orm";
-import { redirect } from "next/navigation";
+
 import { PatientNewAppointmentForm } from "./components/patient-new-appointment-form";
 
 // Forçar renderização dinâmica

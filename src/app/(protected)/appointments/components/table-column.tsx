@@ -1,9 +1,11 @@
 "use client";
 
-import { appointmentsTable } from "@/db/schema";
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+import { appointmentsTable } from "@/db/schema";
+
 import { AppointmentTableActions } from "./table-actions";
 
 type Appointment = typeof appointmentsTable.$inferSelect & {

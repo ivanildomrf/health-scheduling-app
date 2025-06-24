@@ -1,5 +1,11 @@
 "use client";
 
+import { LogOut, User } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useAction } from "next-safe-action/hooks";
+import { toast } from "sonner";
+
 import { patientLogout } from "@/actions/patient-logout";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -11,11 +17,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { APP_CONFIG } from "@/lib/constants";
 import { PatientSession } from "@/lib/patient-auth";
-import { LogOut, User } from "lucide-react";
-import { useAction } from "next-safe-action/hooks";
-import Image from "next/image";
-import Link from "next/link";
-import { toast } from "sonner";
 
 interface PatientHeaderProps {
   session: PatientSession;

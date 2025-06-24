@@ -1,5 +1,6 @@
-import { patientAuth, PatientSession } from "@/lib/patient-auth";
 import { cookies } from "next/headers";
+
+import { patientAuth, PatientSession } from "@/lib/patient-auth";
 
 export async function getPatientSession(): Promise<PatientSession | null> {
   try {

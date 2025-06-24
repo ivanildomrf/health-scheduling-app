@@ -1,3 +1,9 @@
+import dayjs from "dayjs";
+import { eq } from "drizzle-orm";
+import { Calendar, Clock, User } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -5,11 +11,7 @@ import { db } from "@/db";
 import { appointmentsTable } from "@/db/schema";
 import { formatCurrencyInCentsToBRL } from "@/helpers/currency";
 import { getPatientSession } from "@/helpers/patient-session";
-import dayjs from "dayjs";
-import { eq } from "drizzle-orm";
-import { Calendar, Clock, User } from "lucide-react";
-import Link from "next/link";
-import { redirect } from "next/navigation";
+
 import { CancelAppointmentModal } from "./components/cancel-appointment-modal";
 import { RescheduleAppointmentModal } from "./components/reschedule-appointment-modal";
 

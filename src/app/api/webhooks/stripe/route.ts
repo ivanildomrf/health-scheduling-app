@@ -1,17 +1,21 @@
-import { db } from "@/db";
-import { clinicsTable, plansTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+
+import { db } from "@/db";
+import { clinicsTable, plansTable } from "@/db/schema";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function POST(req: NextRequest) {
   try {
+    console.log("🔗 Webhook do Stripe recebido");
+
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
 
     if (!signature) {
+      console.error("❌ Assinatura do webhook não encontrada");
       return NextResponse.json(
         { error: "Assinatura do webhook não encontrada" },
         { status: 400 },
@@ -19,11 +23,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (!process.env.STRIPE_WEBHOOK_SECRET) {
+      console.error("❌ STRIPE_WEBHOOK_SECRET não configurado");
       return NextResponse.json(
         { error: "Secret do webhook não configurado" },
         { status: 500 },
       );
     }
+
+    console.log("🔐 Verificando assinatura do webhook...");
 
     // Verificar a assinatura do webhook
     const event = stripe.webhooks.constructEvent(
@@ -38,6 +45,7 @@ export async function POST(req: NextRequest) {
     // Processar diferentes tipos de eventos
     switch (event.type) {
       case "checkout.session.completed":
+        console.log("🛒 Processando checkout.session.completed");
         await handleCheckoutCompleted(
           event.data.object as Stripe.Checkout.Session,
         );
@@ -45,32 +53,42 @@ export async function POST(req: NextRequest) {
 
       case "customer.subscription.created":
       case "customer.subscription.updated":
+        console.log("📋 Processando mudança de assinatura");
         await handleSubscriptionChange(
           event.data.object as Stripe.Subscription,
         );
         break;
 
       case "customer.subscription.deleted":
+        console.log("❌ Processando cancelamento de assinatura");
         await handleSubscriptionDeleted(
           event.data.object as Stripe.Subscription,
         );
         break;
 
       case "invoice.payment_succeeded":
-        console.log("Pagamento bem-sucedido processado");
+        console.log("✅ Pagamento bem-sucedido processado");
         break;
 
       case "invoice.payment_failed":
-        console.log("Falha no pagamento processada");
+        console.log("❌ Falha no pagamento processada");
         break;
 
       default:
-        console.log(`Evento não processado: ${event.type}`);
+        console.log(`ℹ️ Evento não processado: ${event.type}`);
     }
 
+    console.log("✅ Webhook processado com sucesso");
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Erro no webhook do Stripe:", error);
+    console.error("💥 Erro no webhook do Stripe:", error);
+
+    // Log detalhado do erro
+    if (error instanceof Error) {
+      console.error("Mensagem do erro:", error.message);
+      console.error("Stack trace:", error.stack);
+    }
+
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 },
@@ -144,7 +162,6 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
       planStatus = "active";
       break;
     case "canceled":
-    case "cancelled":
       planStatus = "cancelled";
       break;
     case "past_due":
@@ -155,14 +172,40 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
       planStatus = "trial";
   }
 
-  // Calcular datas da assinatura
-  const planStartDate = new Date(subscription.current_period_start * 1000);
-  const planEndDate = new Date(subscription.current_period_end * 1000);
+  // Calcular datas da assinatura com verificação de segurança
+  let planStartDate: Date | null = null;
+  let planEndDate: Date | null = null;
 
-  console.log("📅 Datas da assinatura:");
-  console.log("- Início:", planStartDate.toISOString());
-  console.log("- Fim:", planEndDate.toISOString());
-  console.log("- Status:", planStatus);
+  try {
+    // As datas estão dentro dos items da subscription, não na raiz
+    const subscriptionItem = subscription.items.data[0];
+
+    if (subscriptionItem?.current_period_start) {
+      planStartDate = new Date(subscriptionItem.current_period_start * 1000);
+    }
+    if (subscriptionItem?.current_period_end) {
+      planEndDate = new Date(subscriptionItem.current_period_end * 1000);
+    }
+
+    console.log("📅 Datas da assinatura:");
+    console.log(
+      "- current_period_start (item):",
+      subscriptionItem?.current_period_start,
+    );
+    console.log(
+      "- current_period_end (item):",
+      subscriptionItem?.current_period_end,
+    );
+    console.log("- Início:", planStartDate?.toISOString() || "Não definido");
+    console.log("- Fim:", planEndDate?.toISOString() || "Não definido");
+    console.log("- Status:", planStatus);
+  } catch (error) {
+    console.error("❌ Erro ao processar datas da assinatura:", error);
+    // Usar datas padrão se houver erro
+    planStartDate = new Date();
+    planEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 dias a partir de agora
+    console.log("⚠️ Usando datas padrão devido ao erro");
+  }
 
   // Atualizar a clínica com os dados da assinatura
   const result = await db

@@ -1,15 +1,16 @@
 "use client";
 
+import dayjs from "dayjs";
+import { Calendar, Clock } from "lucide-react";
+import Link from "next/link";
+import { useAction } from "next-safe-action/hooks";
+import { useEffect, useState } from "react";
+
 import { getPatientAppointments } from "@/actions/get-patient-appointments";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrencyInCentsToBRL } from "@/helpers/currency";
-import dayjs from "dayjs";
-import { Calendar, Clock } from "lucide-react";
-import { useAction } from "next-safe-action/hooks";
-import Link from "next/link";
-import { useEffect, useState } from "react";
 
 interface Appointment {
   id: string;

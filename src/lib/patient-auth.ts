@@ -1,9 +1,10 @@
-import { db } from "@/db";
-import * as schema from "@/db/schema";
-import { patientsTable } from "@/db/schema";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
+
+import { db } from "@/db";
+import * as schema from "@/db/schema";
+import { patientsTable } from "@/db/schema";
 
 export interface PatientSession {
   id: string;

@@ -1,10 +1,11 @@
 "use server";
 
+import { and, eq } from "drizzle-orm";
+import { z } from "zod";
+
 import { db } from "@/db";
 import { notificationsTable } from "@/db/schema";
 import { actionClient } from "@/lib/safe-action";
-import { and, eq } from "drizzle-orm";
-import { z } from "zod";
 
 const markNotificationReadSchema = z.object({
   notificationId: z.string().uuid("ID da notificação deve ser um UUID válido"),

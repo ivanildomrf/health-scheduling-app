@@ -1,11 +1,13 @@
 "use server";
 
+import { count, desc, eq } from "drizzle-orm";
+import { headers } from "next/headers";
+
 import { db } from "@/db";
 import { appointmentsTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
-import { count, desc, eq } from "drizzle-orm";
-import { headers } from "next/headers";
+
 import { getAppointmentsSchema } from "./schema";
 
 export const getAppointments = actionClient

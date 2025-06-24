@@ -1,11 +1,12 @@
 "use client";
 
+import { Settings } from "lucide-react";
+import { usePathname } from "next/navigation";
+
 import { Button } from "@/components/ui/button";
 import { NotificationDropdown } from "@/components/ui/notification-dropdown";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
-import { Settings } from "lucide-react";
-import { usePathname } from "next/navigation";
 
 export function AppHeader() {
   const session = authClient.useSession();

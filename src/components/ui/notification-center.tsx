@@ -1,5 +1,9 @@
 "use client";
 
+import { Bell, CheckCheck, RefreshCw, Search } from "lucide-react";
+import dynamic from "next/dynamic";
+import { useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,9 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNotifications } from "@/hooks/use-notifications";
 import type { NotificationType } from "@/lib/types/notifications";
 import { cn } from "@/lib/utils";
-import { Bell, CheckCheck, RefreshCw, Search } from "lucide-react";
-import dynamic from "next/dynamic";
-import { useState } from "react";
+
 import { NotificationItem } from "./notification-item";
 
 // Dynamic import para evitar hidratação server-side

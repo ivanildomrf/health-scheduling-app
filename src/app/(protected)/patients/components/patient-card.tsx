@@ -1,5 +1,8 @@
 "use client";
 
+import { MailIcon, PencilIcon, PhoneIcon } from "lucide-react";
+import { useState } from "react";
+
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,8 +15,7 @@ import {
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { patientsTable } from "@/db/schema";
-import { MailIcon, PencilIcon, PhoneIcon } from "lucide-react";
-import { useState } from "react";
+
 import UpsertPatientForm from "./upsert-patient-form";
 
 interface PatientCardProps {

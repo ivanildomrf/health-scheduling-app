@@ -1,8 +1,10 @@
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+
 import { db } from "@/db";
 import { clinicsTable, patientsTable } from "@/db/schema";
 import { getPatientSession } from "@/helpers/patient-session";
-import { eq } from "drizzle-orm";
-import { redirect } from "next/navigation";
+
 import { PatientProfileForm } from "./components/patient-profile-form";
 
 // Forçar renderização dinâmica

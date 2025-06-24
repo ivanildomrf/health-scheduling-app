@@ -1,5 +1,19 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import { ArrowLeft, CalendarIcon } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAction } from "next-safe-action/hooks";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
+
 import { createPatientAppointment } from "@/actions/create-patient-appointment";
 import { getPatientProfessionalAvailability } from "@/actions/get-patient-professional-availability";
 import { Button } from "@/components/ui/button";
@@ -26,19 +40,6 @@ import {
 } from "@/components/ui/select";
 import { professionalsTable } from "@/db/schema";
 import { formatCurrencyInCentsToBRL } from "@/helpers/currency";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import { ArrowLeft, CalendarIcon } from "lucide-react";
-import { useAction } from "next-safe-action/hooks";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { z } from "zod";
 
 dayjs.extend(utc);
 

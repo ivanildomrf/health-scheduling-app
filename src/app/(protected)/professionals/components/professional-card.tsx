@@ -1,4 +1,9 @@
 "use client";
+import { CalendarIcon, ClockIcon, PencilIcon, TrashIcon } from "lucide-react";
+import { useAction } from "next-safe-action/hooks";
+import { useState } from "react";
+import { toast } from "sonner";
+
 import { deleteProfessional } from "@/actions/delete-professional";
 import {
   AlertDialog,
@@ -24,10 +29,7 @@ import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { professionalsTable } from "@/db/schema";
 import { formatCurrencyInCentsToBRL } from "@/helpers/currency";
-import { CalendarIcon, ClockIcon, PencilIcon, TrashIcon } from "lucide-react";
-import { useAction } from "next-safe-action/hooks";
-import { useState } from "react";
-import { toast } from "sonner";
+
 import { getAvailability } from "../helpers/availability";
 import UpsertProfessionalForm from "./upsert-professional-form";
 interface ProfessionalCardProps {

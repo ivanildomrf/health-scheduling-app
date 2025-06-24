@@ -1,6 +1,7 @@
-import { emailTemplates, sendEmail } from "@/lib/email";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+
+import { emailTemplates, sendEmail } from "@/lib/email";
 
 const credentialsSchema = z.object({
   patientName: z.string(),

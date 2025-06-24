@@ -1,5 +1,7 @@
 "use client";
 
+import dayjs from "dayjs";
+import { Calendar, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import {
@@ -16,8 +18,6 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { formatCurrencyInCentsToBRL } from "@/helpers/currency";
-import dayjs from "dayjs";
-import { Calendar, DollarSign } from "lucide-react";
 
 export const description = "A stacked area chart";
 

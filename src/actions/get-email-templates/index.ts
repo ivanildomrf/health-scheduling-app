@@ -1,10 +1,11 @@
 "use server";
 
+import { and, eq } from "drizzle-orm";
+import { headers } from "next/headers";
+
 import { db } from "@/db";
 import { emailTemplatesTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { and, eq } from "drizzle-orm";
-import { headers } from "next/headers";
 
 export async function getEmailTemplates() {
   const session = await auth.api.getSession({

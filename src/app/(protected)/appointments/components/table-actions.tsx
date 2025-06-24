@@ -1,10 +1,8 @@
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Check, Clock, EditIcon, MoreVerticalIcon, XIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAction } from "next-safe-action/hooks";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { cancelAppointment } from "@/actions/cancel-appointment";
 import { completeAppointment } from "@/actions/complete-appointment";
@@ -22,13 +20,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import {
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { appointmentsTable } from "@/db/schema";
-import { Check, Clock, EditIcon, MoreVerticalIcon, XIcon } from "lucide-react";
-import { useAction } from "next-safe-action/hooks";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { toast } from "sonner";
+
 import { useAppointmentsContext } from "./appointments-context";
 import UpsertAppointmentForm from "./upsert-appointment-form";
 
