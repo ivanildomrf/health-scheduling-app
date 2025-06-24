@@ -1,5 +1,6 @@
 "use client";
 
+import { createStripeCheckout } from "@/actions/create-stripe-checkout";
 import { upgradePlan } from "@/actions/upgrade-plan";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatCurrency } from "@/helpers/currency";
+import { loadStripe } from "@stripe/stripe-js";
 import { Check, Loader2 } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
 import { toast } from "sonner";
@@ -24,6 +26,7 @@ interface Plan {
   features: string[];
   isCurrentPlan: boolean;
   stripePriceId?: string | null;
+  planStatus: "active" | "inactive";
 }
 
 interface PlanCardProps {
@@ -31,26 +34,71 @@ interface PlanCardProps {
 }
 
 const PlanCard = ({ plan }: PlanCardProps) => {
-  const { execute, isExecuting } = useAction(upgradePlan, {
-    onSuccess: (result) => {
-      if (result.data?.success) {
-        toast.success(result.data.message);
-        // A página será revalidada automaticamente pelo revalidatePath
-      }
+  const { execute: executeStripeCheckout, isExecuting: isCreatingCheckout } =
+    useAction(createStripeCheckout, {
+      onSuccess: async ({ data }) => {
+        if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+          toast.error("Configuração do Stripe não encontrada");
+          return;
+        }
+
+        const stripe = await loadStripe(
+          process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+        );
+
+        if (!stripe) {
+          toast.error("Erro ao carregar Stripe");
+          return;
+        }
+
+        if (!data?.sessionId) {
+          toast.error("Erro ao criar sessão de pagamento");
+          return;
+        }
+
+        await stripe.redirectToCheckout({
+          sessionId: data.sessionId,
+        });
+      },
+      onError: (error) => {
+        toast.error(error.error.serverError || "Erro ao processar pagamento");
+      },
+    });
+
+  const { execute: executeUpgrade, isExecuting: isUpgrading } = useAction(
+    upgradePlan,
+    {
+      onSuccess: (result) => {
+        if (result.data?.success) {
+          toast.success(result.data.message);
+        }
+      },
+      onError: (error) => {
+        toast.error(error.error.serverError || "Erro ao atualizar plano");
+      },
     },
-    onError: (error) => {
-      toast.error(error.error.serverError || "Erro ao atualizar plano");
-    },
-  });
+  );
+
+  const handleStripeCheckout = () => {
+    if (!plan.stripePriceId) {
+      toast.error("Preço do plano não configurado");
+      return;
+    }
+
+    executeStripeCheckout({
+      stripePriceId: plan.stripePriceId,
+    });
+  };
 
   const handleUpgrade = () => {
-    execute({
+    executeUpgrade({
       planSlug: plan.id,
       stripePriceId: plan.stripePriceId || undefined,
     });
   };
 
   const isPopular = plan.id === "professional";
+  const isLoading = isCreatingCheckout || isUpgrading;
 
   return (
     <Card
@@ -106,14 +154,20 @@ const PlanCard = ({ plan }: PlanCardProps) => {
         ) : (
           <Button
             className="w-full bg-blue-600 transition-all duration-300 hover:bg-blue-700"
-            onClick={handleUpgrade}
-            disabled={isExecuting}
+            onClick={
+              plan.planStatus === "active"
+                ? handleStripeCheckout
+                : handleUpgrade
+            }
+            disabled={isLoading}
           >
-            {isExecuting ? (
+            {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Processando...
               </>
+            ) : plan.planStatus === "active" ? (
+              "Assinar Plano"
             ) : (
               "Fazer Upgrade"
             )}

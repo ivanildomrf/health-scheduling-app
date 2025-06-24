@@ -12,6 +12,7 @@ import { asc, eq } from "drizzle-orm";
 import { Check } from "lucide-react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import PaymentFeedback from "./_components/payment-feedback";
 import PlanCard from "./_components/plan-card";
 
 const PlansPage = async () => {
@@ -70,6 +71,11 @@ const PlansPage = async () => {
       clinic?.currentPlan?.slug === plan.slug ||
       (!clinic?.currentPlan && plan.slug === "essential"),
     stripePriceId: plan.stripePriceId,
+    planStatus:
+      // Planos pagos (Professional e Enterprise) sempre usam Stripe
+      plan.slug === "professional" || plan.slug === "enterprise"
+        ? ("active" as const)
+        : ("inactive" as const),
   }));
 
   return (
@@ -84,6 +90,7 @@ const PlansPage = async () => {
         </PageHeaderContent>
       </PageHeader>
       <PageContent>
+        <PaymentFeedback />
         <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
           {transformedPlans.map((plan) => (
             <PlanCard key={plan.id} plan={plan} />
