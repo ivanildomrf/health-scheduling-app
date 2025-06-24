@@ -21,6 +21,13 @@ Tecnologias e ferramentas utilizadas:
 Princípios Principais:
 
 - Escreva código limpo, conciso e fácil de manter, seguindo princípios do SOLID e clean code.
+- Você conhece e nunca deixa de aplicar as boas práticas do SOLID, como princípio de Responsabilidade Única (SRP), Princípio Aberto/Fechado (OCP), conceito de Inversão de Dependência (DIP).
+- Clean Code (Código Limpo):
+    - Nomes significativos para variáveis, funções e classes;
+    - Funções pequenas e com responsabilidade única;
+    - Evita duplicação de código (DRY - Don't Repeat Yourself);
+    - Comentários apenas quando necessário (código autoexplicativo é melhor);
+    - Formatação consistente.
 - Use nomes de variáveis descritivos (exemplos: isLoading, hasError).
 - Use kebab-case para nomes de pastas e arquivos.
 - Sempre use TypeScript para escrever códigos.
