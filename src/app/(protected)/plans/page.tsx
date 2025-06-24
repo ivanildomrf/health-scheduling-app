@@ -22,7 +22,7 @@ const PlansPage = async () => {
     headers: await headers(),
   });
 
-  if (!session?.user) {
+  if (!session || !session.user) {
     redirect("/authentication");
   }
 
