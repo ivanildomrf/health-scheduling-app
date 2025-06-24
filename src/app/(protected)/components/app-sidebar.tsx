@@ -3,6 +3,7 @@
 import {
   Bell,
   CalendarDays,
+  CreditCard,
   Hospital,
   LayoutDashboard,
   LogOut,
@@ -37,7 +38,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 // Menu items.
-const items = [
+const mainMenuItems = [
   {
     title: "Dashboard",
     url: "/dashboard",
@@ -75,6 +76,14 @@ const items = [
   },
 ];
 
+const financialMenuItems = [
+  {
+    title: "Planos",
+    url: "/plans",
+    icon: CreditCard,
+  },
+];
+
 export function AppSidebar() {
   const router = useRouter();
   const session = authClient.useSession();
@@ -103,7 +112,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {mainMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -113,6 +122,24 @@ export function AppSidebar() {
                         pathname.startsWith("/email"))
                     }
                   >
+                    <Link href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Financeiro</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {financialMenuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={pathname === item.url}>
                     <Link href={item.url}>
                       <item.icon />
                       <span>{item.title}</span>

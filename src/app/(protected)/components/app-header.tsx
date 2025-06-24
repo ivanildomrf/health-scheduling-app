@@ -22,13 +22,14 @@ export function AppHeader() {
       "/notifications": "Notificações",
       "/email-templates": "Templates de Email",
       "/email-settings": "Configurações de Email",
+      "/plans": "Planos",
     };
 
     return titleMap[pathname] || "MendX";
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-blue-100/50 bg-white/80 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 w-full border-b border-blue-100/50 bg-white shadow-sm">
       <div className="container flex h-20 items-center justify-between px-4">
         {/* Left side - Sidebar trigger */}
         <div className="flex items-center gap-2">

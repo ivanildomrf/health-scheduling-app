@@ -50,6 +50,13 @@
       "when": 1750427513193,
       "tag": "0006_curious_groot",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1750785774998,
+      "tag": "0007_worthless_radioactive_man",
+      "breakpoints": true
     }
   ]
 }

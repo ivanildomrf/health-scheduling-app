@@ -81,9 +81,87 @@ export const verificationsTable = pgTable("verifications", {
   updatedAt: timestamp("updated_at"),
 });
 
+export const planStatusEnum = pgEnum("plan_status", [
+  "active",
+  "cancelled",
+  "expired",
+  "trial",
+]);
+
+export const featureTypeEnum = pgEnum("feature_type", [
+  "boolean", // true/false features
+  "limit", // numeric limits
+  "access", // access to specific functionality
+]);
+
+// Tabela de planos disponíveis
+export const plansTable = pgTable("plans", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull().unique(), // "Essential", "Professional", "Enterprise"
+  slug: text("slug").notNull().unique(), // "essential", "professional", "enterprise"
+  description: text("description").notNull(),
+  priceInCents: integer("price_in_cents").notNull(),
+  stripePriceId: text("stripe_price_id"), // Para integração com Stripe
+  isActive: boolean("is_active").default(true).notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+// Tabela de funcionalidades/features do sistema
+export const planFeaturesTable = pgTable("plan_features", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull().unique(), // "max_professionals", "unlimited_appointments", etc.
+  displayName: text("display_name").notNull(), // "Cadastro de profissionais", "Agendamentos ilimitados"
+  description: text("description"),
+  featureType: featureTypeEnum("feature_type").notNull(),
+  category: text("category"), // "limits", "features", "support", etc.
+  isActive: boolean("is_active").default(true).notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+// Tabela de relacionamento entre planos e funcionalidades com limites
+export const planFeatureLimitsTable = pgTable("plan_feature_limits", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  planId: uuid("plan_id")
+    .notNull()
+    .references(() => plansTable.id, { onDelete: "cascade" }),
+  featureId: uuid("feature_id")
+    .notNull()
+    .references(() => planFeaturesTable.id, { onDelete: "cascade" }),
+
+  // Para features boolean: enabled = true/false
+  // Para features limit: limitValue = número
+  // Para features access: enabled = true/false
+  enabled: boolean("enabled").default(true).notNull(),
+  limitValue: integer("limit_value"), // null = unlimited
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
 export const clinicsTable = pgTable("clinics", {
   id: uuid("id").primaryKey(),
   name: text("name").notNull(),
+
+  // Referência ao plano atual
+  currentPlanId: uuid("current_plan_id").references(() => plansTable.id),
+  planStatus: planStatusEnum("plan_status").default("trial").notNull(),
+  planStartDate: timestamp("plan_start_date").defaultNow(),
+  planEndDate: timestamp("plan_end_date"),
+
+  // Integração com Stripe
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -121,12 +199,45 @@ export const usersToClinicsTableRelations = relations(
   }),
 );
 
-export const clinicsTableRelations = relations(clinicsTable, ({ many }) => ({
-  professionals: many(professionalsTable),
-  patients: many(patientsTable),
-  appointments: many(appointmentsTable),
-  usersToClinics: many(usersToClinicsTable),
+export const plansTableRelations = relations(plansTable, ({ many }) => ({
+  clinics: many(clinicsTable),
+  planFeatureLimits: many(planFeatureLimitsTable),
 }));
+
+export const planFeaturesTableRelations = relations(
+  planFeaturesTable,
+  ({ many }) => ({
+    planFeatureLimits: many(planFeatureLimitsTable),
+  }),
+);
+
+export const planFeatureLimitsTableRelations = relations(
+  planFeatureLimitsTable,
+  ({ one }) => ({
+    plan: one(plansTable, {
+      fields: [planFeatureLimitsTable.planId],
+      references: [plansTable.id],
+    }),
+    feature: one(planFeaturesTable, {
+      fields: [planFeatureLimitsTable.featureId],
+      references: [planFeaturesTable.id],
+    }),
+  }),
+);
+
+export const clinicsTableRelations = relations(
+  clinicsTable,
+  ({ many, one }) => ({
+    professionals: many(professionalsTable),
+    patients: many(patientsTable),
+    appointments: many(appointmentsTable),
+    usersToClinics: many(usersToClinicsTable),
+    currentPlan: one(plansTable, {
+      fields: [clinicsTable.currentPlanId],
+      references: [plansTable.id],
+    }),
+  }),
+);
 
 export const professionalsTable = pgTable("professionals", {
   id: uuid("id").defaultRandom().primaryKey(),
