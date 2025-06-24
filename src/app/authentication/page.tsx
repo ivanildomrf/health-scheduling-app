@@ -1,6 +1,8 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { auth } from "@/lib/auth";
+import { APP_CONFIG } from "@/lib/constants";
 import { headers } from "next/headers";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import SignInForm from "./components/sign-in-form";
 import SignUpForm from "./components/sign-up-form";
@@ -21,23 +23,14 @@ const AuthenticationPage = async () => {
         <div className="flex w-full items-center justify-center p-8 lg:w-1/2">
           <div className="w-full max-w-md space-y-8">
             {/* Logo */}
-            <div className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600">
-                <svg
-                  className="h-8 w-8 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-              </div>
-              <h1 className="text-2xl font-bold text-slate-900">dr.cuidar</h1>
+            <div className="mx-auto flex h-16 w-auto items-center justify-center">
+              <Image
+                src={APP_CONFIG.logo.local}
+                alt={APP_CONFIG.name}
+                width={24}
+                height={24}
+                className="h-18 w-auto"
+              />
             </div>
 
             {/* Formulários */}
