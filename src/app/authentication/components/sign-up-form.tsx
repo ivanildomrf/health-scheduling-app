@@ -12,14 +12,6 @@ import {
 import { Input } from "@/components/ui/input";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -57,76 +49,92 @@ const SignUpForm = () => {
   };
 
   return (
-    <Card>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="space-y-2 text-center">
+        <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+          Criar conta
+        </h2>
+        <p className="text-slate-600">Crie uma conta para continuar</p>
+      </div>
+
+      {/* Formulário */}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <CardHeader>
-            <CardTitle>Criar conta</CardTitle>
-            <CardDescription>Crie uma conta para continuar</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Digite seu nome" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-slate-700">Nome</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Digite seu nome"
+                    className="h-12 border-slate-200 bg-white focus:border-blue-500 focus:ring-blue-500"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>E-mail</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Digite seu email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-slate-700">E-mail</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Digite seu email"
+                    className="h-12 border-slate-200 bg-white focus:border-blue-500 focus:ring-blue-500"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Senha</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Digite sua senha"
-                      type="password"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-          <CardFooter>
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-slate-700">Senha</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Digite sua senha"
+                    type="password"
+                    className="h-12 border-slate-200 bg-white focus:border-blue-500 focus:ring-blue-500"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="pt-4">
             <Button
               type="submit"
-              className="w-full"
+              className="h-12 w-full bg-gradient-to-r from-blue-600 to-cyan-600 font-medium text-white hover:from-blue-700 hover:to-cyan-700 focus:ring-4 focus:ring-blue-200"
               disabled={form.formState.isSubmitting}
             >
               {form.formState.isSubmitting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Criando conta...
+                </>
               ) : (
                 "Criar conta"
               )}
             </Button>
-          </CardFooter>
+          </div>
         </form>
       </Form>
-    </Card>
+    </div>
   );
 };
 
