@@ -21,22 +21,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { zodResolver } from "@hookform/resolvers/zod";
+import dayjs from "dayjs";
 import {
-  AlertCircle,
   CheckCircle,
   ChevronLeft,
   ChevronRight,
+  Edit3,
+  Eye,
   FileText,
   Globe,
+  Home,
+  IdCard,
   Loader2,
   MapPin,
   Phone,
   User,
 } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { PatternFormat } from "react-number-format";
 import { toast } from "sonner";
@@ -73,38 +76,69 @@ const ESTADOS_BRASILEIROS = [
   { value: "TO", label: "Tocantins" },
 ];
 
-// Interface para município
-interface Municipio {
-  id: number;
-  nome: string;
-}
-
 // Países para seleção (em ordem alfabética)
 const PAISES = [
-  { value: "DE", label: "Alemanha" },
-  { value: "AR", label: "Argentina" },
-  { value: "BO", label: "Bolívia" },
   { value: "BR", label: "Brasil" },
+  { value: "AR", label: "Argentina" },
+  { value: "AU", label: "Austrália" },
+  { value: "AT", label: "Áustria" },
+  { value: "BE", label: "Bélgica" },
+  { value: "BO", label: "Bolívia" },
   { value: "CA", label: "Canadá" },
   { value: "CL", label: "Chile" },
   { value: "CN", label: "China" },
   { value: "CO", label: "Colômbia" },
+  { value: "CR", label: "Costa Rica" },
+  { value: "CU", label: "Cuba" },
+  { value: "DK", label: "Dinamarca" },
   { value: "EC", label: "Equador" },
+  { value: "EG", label: "Egito" },
   { value: "ES", label: "Espanha" },
   { value: "US", label: "Estados Unidos" },
+  { value: "FI", label: "Finlândia" },
   { value: "FR", label: "França" },
+  { value: "DE", label: "Alemanha" },
+  { value: "GR", label: "Grécia" },
+  { value: "GT", label: "Guatemala" },
   { value: "GY", label: "Guiana" },
   { value: "GF", label: "Guiana Francesa" },
+  { value: "HT", label: "Haiti" },
+  { value: "HN", label: "Honduras" },
+  { value: "IN", label: "Índia" },
+  { value: "ID", label: "Indonésia" },
+  { value: "IR", label: "Irã" },
+  { value: "IQ", label: "Iraque" },
+  { value: "IE", label: "Irlanda" },
+  { value: "IL", label: "Israel" },
   { value: "IT", label: "Itália" },
+  { value: "JM", label: "Jamaica" },
   { value: "JP", label: "Japão" },
+  { value: "JO", label: "Jordânia" },
+  { value: "LB", label: "Líbano" },
+  { value: "LY", label: "Líbia" },
   { value: "MX", label: "México" },
-  { value: "OTHER", label: "Outro" },
+  { value: "MA", label: "Marrocos" },
+  { value: "NI", label: "Nicarágua" },
+  { value: "NO", label: "Noruega" },
+  { value: "NZ", label: "Nova Zelândia" },
+  { value: "PA", label: "Panamá" },
   { value: "PY", label: "Paraguai" },
   { value: "PE", label: "Peru" },
+  { value: "PL", label: "Polônia" },
   { value: "PT", label: "Portugal" },
+  { value: "GB", label: "Reino Unido" },
+  { value: "RU", label: "Rússia" },
+  { value: "SV", label: "El Salvador" },
   { value: "SR", label: "Suriname" },
+  { value: "SE", label: "Suécia" },
+  { value: "CH", label: "Suíça" },
+  { value: "TH", label: "Tailândia" },
+  { value: "TR", label: "Turquia" },
+  { value: "UA", label: "Ucrânia" },
   { value: "UY", label: "Uruguai" },
   { value: "VE", label: "Venezuela" },
+  { value: "VN", label: "Vietnã" },
+  { value: "ZA", label: "África do Sul" },
 ];
 
 // Graus de parentesco
@@ -123,6 +157,168 @@ const GRAUS_PARENTESCO = [
   { value: "outro", label: "Outro" },
 ];
 
+// Tipos para API do IBGE
+interface IBGECity {
+  id: number;
+  nome: string;
+}
+
+interface IBGEState {
+  id: number;
+  sigla: string;
+  nome: string;
+}
+
+// Tipos para Country State City API (países estrangeiros)
+interface CountryStateCityState {
+  id: number;
+  name: string;
+  iso2: string;
+}
+
+interface CountryStateCityCity {
+  id: number;
+  name: string;
+  latitude: string;
+  longitude: string;
+}
+
+// Dados estáticos para principais países (fallback quando API não está disponível)
+const ESTADOS_PAISES_ESTATICOS: Record<
+  string,
+  { value: string; label: string }[]
+> = {
+  AR: [
+    // Argentina
+    { value: "buenos_aires", label: "Buenos Aires" },
+    { value: "catamarca", label: "Catamarca" },
+    { value: "chaco", label: "Chaco" },
+    { value: "chubut", label: "Chubut" },
+    { value: "cordoba", label: "Córdoba" },
+    { value: "corrientes", label: "Corrientes" },
+    { value: "entre_rios", label: "Entre Ríos" },
+    { value: "formosa", label: "Formosa" },
+    { value: "jujuy", label: "Jujuy" },
+    { value: "la_pampa", label: "La Pampa" },
+    { value: "la_rioja", label: "La Rioja" },
+    { value: "mendoza", label: "Mendoza" },
+    { value: "misiones", label: "Misiones" },
+    { value: "neuquen", label: "Neuquén" },
+    { value: "rio_negro", label: "Río Negro" },
+    { value: "salta", label: "Salta" },
+    { value: "san_juan", label: "San Juan" },
+    { value: "san_luis", label: "San Luis" },
+    { value: "santa_cruz", label: "Santa Cruz" },
+    { value: "santa_fe", label: "Santa Fe" },
+    { value: "santiago_del_estero", label: "Santiago del Estero" },
+    { value: "tierra_del_fuego", label: "Tierra del Fuego" },
+    { value: "tucuman", label: "Tucumán" },
+  ],
+  US: [
+    // Estados Unidos
+    { value: "alabama", label: "Alabama" },
+    { value: "alaska", label: "Alaska" },
+    { value: "arizona", label: "Arizona" },
+    { value: "arkansas", label: "Arkansas" },
+    { value: "california", label: "California" },
+    { value: "colorado", label: "Colorado" },
+    { value: "connecticut", label: "Connecticut" },
+    { value: "delaware", label: "Delaware" },
+    { value: "florida", label: "Florida" },
+    { value: "georgia", label: "Georgia" },
+    { value: "hawaii", label: "Hawaii" },
+    { value: "idaho", label: "Idaho" },
+    { value: "illinois", label: "Illinois" },
+    { value: "indiana", label: "Indiana" },
+    { value: "iowa", label: "Iowa" },
+    { value: "kansas", label: "Kansas" },
+    { value: "kentucky", label: "Kentucky" },
+    { value: "louisiana", label: "Louisiana" },
+    { value: "maine", label: "Maine" },
+    { value: "maryland", label: "Maryland" },
+    { value: "massachusetts", label: "Massachusetts" },
+    { value: "michigan", label: "Michigan" },
+    { value: "minnesota", label: "Minnesota" },
+    { value: "mississippi", label: "Mississippi" },
+    { value: "missouri", label: "Missouri" },
+    { value: "montana", label: "Montana" },
+    { value: "nebraska", label: "Nebraska" },
+    { value: "nevada", label: "Nevada" },
+    { value: "new_hampshire", label: "New Hampshire" },
+    { value: "new_jersey", label: "New Jersey" },
+    { value: "new_mexico", label: "New Mexico" },
+    { value: "new_york", label: "New York" },
+    { value: "north_carolina", label: "North Carolina" },
+    { value: "north_dakota", label: "North Dakota" },
+    { value: "ohio", label: "Ohio" },
+    { value: "oklahoma", label: "Oklahoma" },
+    { value: "oregon", label: "Oregon" },
+    { value: "pennsylvania", label: "Pennsylvania" },
+    { value: "rhode_island", label: "Rhode Island" },
+    { value: "south_carolina", label: "South Carolina" },
+    { value: "south_dakota", label: "South Dakota" },
+    { value: "tennessee", label: "Tennessee" },
+    { value: "texas", label: "Texas" },
+    { value: "utah", label: "Utah" },
+    { value: "vermont", label: "Vermont" },
+    { value: "virginia", label: "Virginia" },
+    { value: "washington", label: "Washington" },
+    { value: "west_virginia", label: "West Virginia" },
+    { value: "wisconsin", label: "Wisconsin" },
+    { value: "wyoming", label: "Wyoming" },
+  ],
+  CA: [
+    // Canadá
+    { value: "alberta", label: "Alberta" },
+    { value: "british_columbia", label: "British Columbia" },
+    { value: "manitoba", label: "Manitoba" },
+    { value: "new_brunswick", label: "New Brunswick" },
+    { value: "newfoundland_and_labrador", label: "Newfoundland and Labrador" },
+    { value: "northwest_territories", label: "Northwest Territories" },
+    { value: "nova_scotia", label: "Nova Scotia" },
+    { value: "nunavut", label: "Nunavut" },
+    { value: "ontario", label: "Ontario" },
+    { value: "prince_edward_island", label: "Prince Edward Island" },
+    { value: "quebec", label: "Quebec" },
+    { value: "saskatchewan", label: "Saskatchewan" },
+    { value: "yukon", label: "Yukon" },
+  ],
+  MX: [
+    // México
+    { value: "aguascalientes", label: "Aguascalientes" },
+    { value: "baja_california", label: "Baja California" },
+    { value: "baja_california_sur", label: "Baja California Sur" },
+    { value: "campeche", label: "Campeche" },
+    { value: "chiapas", label: "Chiapas" },
+    { value: "chihuahua", label: "Chihuahua" },
+    { value: "coahuila", label: "Coahuila" },
+    { value: "colima", label: "Colima" },
+    { value: "durango", label: "Durango" },
+    { value: "guanajuato", label: "Guanajuato" },
+    { value: "guerrero", label: "Guerrero" },
+    { value: "hidalgo", label: "Hidalgo" },
+    { value: "jalisco", label: "Jalisco" },
+    { value: "mexico", label: "México" },
+    { value: "michoacan", label: "Michoacán" },
+    { value: "morelos", label: "Morelos" },
+    { value: "nayarit", label: "Nayarit" },
+    { value: "nuevo_leon", label: "Nuevo León" },
+    { value: "oaxaca", label: "Oaxaca" },
+    { value: "puebla", label: "Puebla" },
+    { value: "queretaro", label: "Querétaro" },
+    { value: "quintana_roo", label: "Quintana Roo" },
+    { value: "san_luis_potosi", label: "San Luis Potosí" },
+    { value: "sinaloa", label: "Sinaloa" },
+    { value: "sonora", label: "Sonora" },
+    { value: "tabasco", label: "Tabasco" },
+    { value: "tamaulipas", label: "Tamaulipas" },
+    { value: "tlaxcala", label: "Tlaxcala" },
+    { value: "veracruz", label: "Veracruz" },
+    { value: "yucatan", label: "Yucatán" },
+    { value: "zacatecas", label: "Zacatecas" },
+  ],
+};
+
 // Definição das etapas do wizard
 const WIZARD_STEPS = [
   {
@@ -130,123 +326,56 @@ const WIZARD_STEPS = [
     title: "Dados Básicos",
     description: "Informações essenciais de identificação",
     icon: User,
-    fields: [
-      "motherName",
-      "motherUnknown",
-      "sex",
-      "gender",
-      "birthDate",
-      "raceColor",
-      "email",
-      "phone",
-    ],
   },
   {
     id: "nationality",
     title: "Nacionalidade",
     description: "Origem e nacionalidade",
     icon: Globe,
-    fields: [
-      "birthCountry",
-      "nationality",
-      "birthCity",
-      "birthState",
-      "naturalizationDate",
-    ],
   },
   {
     id: "documents",
     title: "Documentos",
     description: "CPF, RG, CNS e Passaporte",
     icon: FileText,
-    fields: [
-      "cpf",
-      "cnsNumber",
-      "rgNumber",
-      "rgComplement",
-      "rgState",
-      "rgIssuer",
-      "rgIssueDate",
-      "passportNumber",
-      "passportCountry",
-      "passportIssueDate",
-      "passportExpiryDate",
-    ],
   },
   {
     id: "address",
     title: "Endereço",
     description: "Localização e residência",
     icon: MapPin,
-    fields: [
-      "zipCode",
-      "country",
-      "addressType",
-      "addressName",
-      "addressNumber",
-      "addressComplement",
-      "addressNeighborhood",
-      "city",
-      "state",
-    ],
   },
   {
     id: "contacts",
     title: "Contatos",
     description: "Email, telefone e emergência",
     icon: Phone,
-    fields: [
-      "email",
-      "phone",
-      "emergencyContact",
-      "emergencyPhone",
-      "guardianName",
-      "guardianRelationship",
-      "guardianCpf",
-    ],
   },
 ];
 
+// Schema de validação simplificado
 const profileSchema = z.object({
-  // Dados básicos obrigatórios do CNS
-  name: z.string().min(1, "Nome é obrigatório"),
-  socialName: z.string().optional(),
-  motherName: z.string().optional(),
+  socialName: z.string().optional().or(z.literal("")),
+  motherName: z.string().optional().or(z.literal("")),
   motherUnknown: z.boolean().optional(),
-  sex: z.enum(["male", "female"], { message: "Sexo é obrigatório" }),
+  sex: z.enum(["male", "female"]),
   gender: z
     .enum(["cisgender", "transgenero", "nao_binario", "outro", "nao_informado"])
     .optional(),
-  birthDate: z.string().optional(),
+  birthDate: z.string().optional().or(z.literal("")),
   raceColor: z
     .enum(["branca", "preta", "parda", "amarela", "indigena", "sem_informacao"])
     .optional(),
-
-  // Dados de nacionalidade
-  nationality: z.string().optional(),
-  birthCountry: z.string().optional(),
-  birthCity: z.string().optional(),
-  birthState: z.string().optional(),
-  naturalizationDate: z.string().optional(),
-
-  // Documentos para estrangeiros
-  passportNumber: z.string().optional(),
-  passportCountry: z.string().optional(),
-  passportIssueDate: z.string().optional(),
-  passportExpiryDate: z.string().optional(),
-
-  // Contato
-  email: z
-    .string()
-    .min(1, "Email é obrigatório")
-    .email("Digite um email válido (exemplo: usuario@email.com)")
-    .refine((email) => email.includes("@") && email.includes("."), {
-      message: "Email deve conter @ e um domínio válido",
-    }),
-  phone: z.string().min(1, "Telefone é obrigatório"),
-
-  // Endereço completo
-  zipCode: z.string().optional(),
+  nationality: z.string().optional().or(z.literal("")),
+  birthCountry: z.string().optional().or(z.literal("")),
+  birthCity: z.string().optional().or(z.literal("")),
+  birthState: z.string().optional().or(z.literal("")),
+  naturalizationDate: z.string().optional().or(z.literal("")),
+  passportNumber: z.string().optional().or(z.literal("")),
+  passportCountry: z.string().optional().or(z.literal("")),
+  passportIssueDate: z.string().optional().or(z.literal("")),
+  passportExpiryDate: z.string().optional().or(z.literal("")),
+  zipCode: z.string().optional().or(z.literal("")),
   addressType: z
     .enum([
       "rua",
@@ -259,25 +388,23 @@ const profileSchema = z.object({
       "outro",
     ])
     .optional(),
-  addressName: z.string().optional(),
-  addressNumber: z.string().optional(),
-  addressComplement: z.string().optional(),
-  addressNeighborhood: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  country: z.string().optional(),
-
-  // Documentos brasileiros
-  cpf: z.string().optional(),
-  rgNumber: z.string().optional(),
-  rgComplement: z.string().optional(),
-  rgState: z.string().optional(),
-  rgIssuer: z.string().optional(),
-  rgIssueDate: z.string().optional(),
-  cnsNumber: z.string().optional(),
-
-  // Guardião/Representante legal (para menores de 16 anos)
-  guardianName: z.string().optional(),
+  addressName: z.string().optional().or(z.literal("")),
+  addressNumber: z.string().optional().or(z.literal("")),
+  addressComplement: z.string().optional().or(z.literal("")),
+  addressNeighborhood: z.string().optional().or(z.literal("")),
+  city: z.string().optional().or(z.literal("")),
+  state: z.string().optional().or(z.literal("")),
+  country: z.string().optional().or(z.literal("")),
+  cpf: z.string().optional().or(z.literal("")),
+  rgNumber: z.string().optional().or(z.literal("")),
+  rgComplement: z.string().optional().or(z.literal("")),
+  rgState: z.string().optional().or(z.literal("")),
+  rgIssuer: z.string().optional().or(z.literal("")),
+  rgIssueDate: z.string().optional().or(z.literal("")),
+  cnsNumber: z.string().optional().or(z.literal("")),
+  emergencyContact: z.string().optional().or(z.literal("")),
+  emergencyPhone: z.string().optional().or(z.literal("")),
+  guardianName: z.string().optional().or(z.literal("")),
   guardianRelationship: z
     .enum([
       "pai",
@@ -294,11 +421,9 @@ const profileSchema = z.object({
       "outro",
     ])
     .optional(),
-  guardianCpf: z.string().optional(),
-
-  // Contato de emergência
-  emergencyContact: z.string().optional(),
-  emergencyPhone: z.string().optional(),
+  guardianCpf: z.string().optional().or(z.literal("")),
+  email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
+  phone: z.string().min(1, "Telefone é obrigatório"),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -353,546 +478,520 @@ interface PatientProfileFormProps {
   };
 }
 
-// Tipo para rastrear status de salvamento de cada campo
-type FieldSaveStatus = "idle" | "saving" | "saved" | "error";
+// Funções utilitárias para formatação
+const formatPhone = (phone: string | null | undefined) => {
+  if (!phone) return "Não informado";
+  const numbers = phone.replace(/\D/g, "");
+  if (numbers.length === 11) {
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+  }
+  return phone;
+};
 
-interface FieldStatus {
-  [fieldName: string]: FieldSaveStatus;
-}
+const formatCPF = (cpf: string | null | undefined) => {
+  if (!cpf) return "Não informado";
+  const numbers = cpf.replace(/\D/g, "");
+  if (numbers.length === 11) {
+    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9)}`;
+  }
+  return cpf;
+};
+
+const formatCEP = (cep: string | null | undefined) => {
+  if (!cep) return "Não informado";
+  const numbers = cep.replace(/\D/g, "");
+  if (numbers.length === 8) {
+    return `${numbers.slice(0, 5)}-${numbers.slice(5)}`;
+  }
+  return cep;
+};
+
+const formatDate = (date: Date | null | string | undefined) => {
+  if (!date) return "Não informado";
+  return dayjs(date).format("DD/MM/YYYY");
+};
+
+const getGenderLabel = (gender: string | null | undefined) => {
+  const genderMap: Record<string, string> = {
+    cisgender: "Cisgênero",
+    transgenero: "Transgênero",
+    nao_binario: "Não binário",
+    outro: "Outro",
+    nao_informado: "Não informado",
+  };
+  return genderMap[gender || ""] || "Não informado";
+};
+
+const getRaceColorLabel = (raceColor: string | null | undefined) => {
+  const raceMap: Record<string, string> = {
+    branca: "Branca",
+    preta: "Preta",
+    parda: "Parda",
+    amarela: "Amarela",
+    indigena: "Indígena",
+    sem_informacao: "Sem informação",
+  };
+  return raceMap[raceColor || ""] || "Não informado";
+};
+
+const getRelationshipLabel = (relationship: string | null | undefined) => {
+  const relationshipMap: Record<string, string> = {
+    pai: "Pai",
+    mae: "Mãe",
+    avo: "Avô",
+    avo_feminino: "Avó",
+    tio: "Tio",
+    tia: "Tia",
+    irmao: "Irmão",
+    irma: "Irmã",
+    tutor: "Tutor Legal",
+    curador: "Curador",
+    responsavel_legal: "Responsável Legal",
+    outro: "Outro",
+  };
+  return relationshipMap[relationship || ""] || "Não informado";
+};
+
+const getCountryLabel = (countryCode: string | null | undefined) => {
+  const country = PAISES.find((p) => p.value === countryCode);
+  return country ? country.label : countryCode || "Não informado";
+};
+
+const getStateLabel = (stateCode: string | null | undefined) => {
+  const state = ESTADOS_BRASILEIROS.find((s) => s.value === stateCode);
+  return state ? state.label : stateCode || "Não informado";
+};
+
+const getAddressTypeLabel = (addressType: string | null | undefined) => {
+  const typeMap: Record<string, string> = {
+    rua: "Rua",
+    avenida: "Avenida",
+    travessa: "Travessa",
+    alameda: "Alameda",
+    praca: "Praça",
+    estrada: "Estrada",
+    rodovia: "Rodovia",
+    outro: "Outro",
+  };
+  return typeMap[addressType || ""] || "Não informado";
+};
+
+// Função para converter nomes de países para códigos ISO
+const convertCountryNameToCode = (countryName: string | null | undefined) => {
+  if (!countryName) return "BR";
+
+  // Mapeamento de nomes para códigos ISO
+  const countryMapping: { [key: string]: string } = {
+    Brasil: "BR",
+    Argentina: "AR",
+    "Estados Unidos": "US",
+    "Estados Unidos da América": "US",
+    Canada: "CA",
+    Canadá: "CA",
+    México: "MX",
+    Chile: "CL",
+    Peru: "PE",
+    Uruguai: "UY",
+    Paraguai: "PY",
+    Bolivia: "BO",
+    Bolívia: "BO",
+    Colombia: "CO",
+    Colômbia: "CO",
+    Venezuela: "VE",
+    Equador: "EC",
+  };
+
+  // Se já é um código ISO (2 caracteres), retornar como está
+  if (countryName.length === 2) {
+    return countryName.toUpperCase();
+  }
+
+  // Tentar encontrar o mapeamento
+  return countryMapping[countryName] || countryName;
+};
 
 export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
+  // Estados para controlar o modo (visualização/edição)
+  const [isEditMode, setIsEditMode] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [fieldStatus, setFieldStatus] = useState<FieldStatus>({});
-  const [estados] = useState(ESTADOS_BRASILEIROS);
-  const [municipios, setMunicipios] = useState<Municipio[]>([]);
-  const [loadingMunicipios, setLoadingMunicipios] = useState(false);
-
-  // Estados para controlar salvamentos pendentes
-  const [pendingSaves, setPendingSaves] = useState<Record<string, any>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const maxWaitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [actionExecuted, setActionExecuted] = useState(false);
 
-  // Estados para confirmação de sincronização de países
-  const [showCountrySyncDialog, setShowCountrySyncDialog] = useState(false);
-  const [pendingCountrySync, setPendingCountrySync] = useState<{
-    birthCountry: string;
-    countryName: string;
-  } | null>(null);
+  // Estados para gerenciar cidades da API do IBGE
+  const [cities, setCities] = useState<IBGECity[]>([]);
+  const [loadingCities, setLoadingCities] = useState(false);
 
-  // Estados para confirmação de limpeza de campos de estrangeiro
-  const [showClearFieldsDialog, setShowClearFieldsDialog] = useState(false);
-  const [pendingBrazilChange, setPendingBrazilChange] = useState<{
-    newValue: string;
-    previousValue: string;
-  } | null>(null);
+  // Estados para gerenciar dados de países estrangeiros
+  const [foreignStates, setForeignStates] = useState<CountryStateCityState[]>(
+    [],
+  );
+  const [foreignCities, setForeignCities] = useState<CountryStateCityCity[]>(
+    [],
+  );
+  const [loadingForeignStates, setLoadingForeignStates] = useState(false);
+  const [loadingForeignCities, setLoadingForeignCities] = useState(false);
+
+  // Configuração do form
+  const defaultFormValues = {
+    socialName: patientData.socialName || "",
+    motherName: patientData.motherName || "",
+    motherUnknown: patientData.motherUnknown || false,
+    sex: patientData.sex,
+    gender:
+      (patientData.gender as
+        | "cisgender"
+        | "transgenero"
+        | "nao_binario"
+        | "outro"
+        | "nao_informado") || undefined,
+    birthDate: patientData.birthDate
+      ? dayjs(patientData.birthDate).format("YYYY-MM-DD")
+      : "",
+    raceColor:
+      (patientData.raceColor as
+        | "branca"
+        | "preta"
+        | "parda"
+        | "amarela"
+        | "indigena"
+        | "sem_informacao") || undefined,
+    nationality: patientData.nationality || "",
+    birthCountry: convertCountryNameToCode(patientData.birthCountry),
+    birthCity: patientData.birthCity || "",
+    birthState: patientData.birthState || "",
+    naturalizationDate: patientData.naturalizationDate
+      ? dayjs(patientData.naturalizationDate).format("YYYY-MM-DD")
+      : "",
+    passportNumber: patientData.passportNumber || "",
+    passportCountry: patientData.passportCountry || "",
+    passportIssueDate: patientData.passportIssueDate
+      ? dayjs(patientData.passportIssueDate).format("YYYY-MM-DD")
+      : "",
+    passportExpiryDate: patientData.passportExpiryDate
+      ? dayjs(patientData.passportExpiryDate).format("YYYY-MM-DD")
+      : "",
+    zipCode: patientData.zipCode || "",
+    addressType:
+      (patientData.addressType as
+        | "rua"
+        | "avenida"
+        | "travessa"
+        | "alameda"
+        | "praca"
+        | "estrada"
+        | "rodovia"
+        | "outro") || undefined,
+    addressName: patientData.addressName || "",
+    addressNumber: patientData.addressNumber || "",
+    addressComplement: patientData.addressComplement || "",
+    addressNeighborhood: patientData.addressNeighborhood || "",
+    city: patientData.city || "",
+    state: patientData.state || "",
+    country: convertCountryNameToCode(patientData.country),
+    cpf: patientData.cpf || "",
+    rgNumber: patientData.rgNumber || "",
+    rgComplement: patientData.rgComplement || "",
+    rgState: patientData.rgState || "",
+    rgIssuer: patientData.rgIssuer || "",
+    rgIssueDate: patientData.rgIssueDate
+      ? dayjs(patientData.rgIssueDate).format("YYYY-MM-DD")
+      : "",
+    cnsNumber: patientData.cnsNumber || "",
+    emergencyContact: patientData.emergencyContact || "",
+    emergencyPhone: patientData.emergencyPhone || "",
+    guardianName: patientData.guardianName || "",
+    guardianRelationship:
+      (patientData.guardianRelationship as
+        | "pai"
+        | "mae"
+        | "avo"
+        | "avo_feminino"
+        | "tio"
+        | "tia"
+        | "irmao"
+        | "irma"
+        | "tutor"
+        | "curador"
+        | "responsavel_legal"
+        | "outro") || undefined,
+    guardianCpf: patientData.guardianCpf || "",
+    email: patientData.email || "",
+    phone: patientData.phone || "",
+  };
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
-    defaultValues: {
-      name: patientData.name,
-      socialName: patientData.socialName || "",
-      motherName: patientData.motherName || "",
-      motherUnknown: patientData.motherUnknown || false,
-      email: patientData.email,
-      phone: patientData.phone,
-      sex: patientData.sex,
-      gender: (patientData.gender as any) || undefined,
-      birthDate: patientData.birthDate
-        ? patientData.birthDate.toISOString().split("T")[0]
-        : "",
-      raceColor: (patientData.raceColor as any) || undefined,
-      nationality:
-        patientData.nationality ||
-        (patientData.birthCountry
-          ? (() => {
-              const nacionalidades: Record<string, string> = {
-                BR: "Brasileira",
-                AR: "Argentina",
-                BO: "Boliviana",
-                CL: "Chilena",
-                CO: "Colombiana",
-                EC: "Equatoriana",
-                GF: "Francesa",
-                GY: "Guianense",
-                PY: "Paraguaia",
-                PE: "Peruana",
-                SR: "Surinamesa",
-                UY: "Uruguaia",
-                VE: "Venezuelana",
-                US: "Americana",
-                CA: "Canadense",
-                MX: "Mexicana",
-                PT: "Portuguesa",
-                ES: "Espanhola",
-                IT: "Italiana",
-                FR: "Francesa",
-                DE: "Alemã",
-                JP: "Japonesa",
-                CN: "Chinesa",
-                OTHER: "Outra",
-              };
-              return (
-                nacionalidades[patientData.birthCountry] || "Não informada"
-              );
-            })()
-          : ""),
-      birthCountry: patientData.birthCountry || "",
-      birthCity: patientData.birthCity || "",
-      birthState: patientData.birthState || "",
-      naturalizationDate: patientData.naturalizationDate
-        ? patientData.naturalizationDate.toISOString().split("T")[0]
-        : "",
-      passportNumber: patientData.passportNumber || "",
-      passportCountry: patientData.passportCountry || "",
-      passportIssueDate: patientData.passportIssueDate
-        ? patientData.passportIssueDate.toISOString().split("T")[0]
-        : "",
-      passportExpiryDate: patientData.passportExpiryDate
-        ? patientData.passportExpiryDate.toISOString().split("T")[0]
-        : "",
-      zipCode: patientData.zipCode || "",
-      addressType: (patientData.addressType as any) || undefined,
-      addressName: patientData.addressName || "",
-      addressNumber: patientData.addressNumber || "",
-      addressComplement: patientData.addressComplement || "",
-      addressNeighborhood: patientData.addressNeighborhood || "",
-      city: patientData.city || "",
-      state: patientData.state || "",
-      country: patientData.country || "",
-      cpf: patientData.cpf || "",
-      rgNumber: patientData.rgNumber || "",
-      rgComplement: patientData.rgComplement || "",
-      rgState: patientData.rgState || "",
-      rgIssuer: patientData.rgIssuer || "",
-      rgIssueDate: patientData.rgIssueDate
-        ? patientData.rgIssueDate.toISOString().split("T")[0]
-        : "",
-      cnsNumber: patientData.cnsNumber || "",
-      guardianName: patientData.guardianName || "",
-      guardianRelationship:
-        (patientData.guardianRelationship as any) || undefined,
-      guardianCpf: patientData.guardianCpf || "",
-      emergencyContact: patientData.emergencyContact || "",
-      emergencyPhone: patientData.emergencyPhone || "",
-    },
+    mode: "onBlur", // Validar quando sair do campo
+    defaultValues: defaultFormValues,
   });
 
-  const updateProfileAction = useAction(updatePatientProfile, {
-    onSuccess: ({ data }) => {
-      if (data?.success) {
-        // Não mostrar toast para cada campo, apenas atualizar status visual
+  // Server action
+  const { execute, result, isExecuting } = useAction(updatePatientProfile);
+
+  // Monitorar resultado da Server Action
+  useEffect(() => {
+    // Só processar se uma ação foi executada e há um resultado válido
+    if (
+      actionExecuted &&
+      result &&
+      !isExecuting &&
+      (result.data || result.serverError || result.validationErrors)
+    ) {
+      if (result?.data?.success === true) {
+        toast.success("Perfil atualizado com sucesso!");
+        setIsEditMode(false);
+        setCurrentStep(0);
+        setIsSaving(false);
+        setActionExecuted(false); // Reset da flag
+        // Recarregar a página para mostrar os dados atualizados
+        window.location.reload();
+      } else if (result?.data?.error) {
+        console.error("❌ Erro da action:", result.data.error);
+        toast.error(result.data.error);
+        setIsSaving(false);
+        setActionExecuted(false); // Reset da flag
+      } else if (result?.serverError) {
+        console.error("❌ Erro do servidor:", result.serverError);
+        toast.error("Erro interno do servidor");
+        setIsSaving(false);
+        setActionExecuted(false); // Reset da flag
+      } else if (result?.validationErrors) {
+        console.error("❌ Erros de validação:", result.validationErrors);
+        const firstError = Object.values(result.validationErrors)[0];
+        toast.error(`Erro de validação: ${firstError}`);
+        setIsSaving(false);
+        setActionExecuted(false); // Reset da flag
+      } else if (result?.data !== undefined) {
+        // Só mostrar erro se há dados mas estrutura inesperada
+        console.error("❌ Resultado inesperado:", result);
+        toast.error("Erro ao atualizar perfil");
+        setIsSaving(false);
+        setActionExecuted(false); // Reset da flag
       }
-    },
-    onError: ({ error }) => {
-      toast.error("Erro ao salvar", {
-        description: error.serverError || "Tente novamente",
-      });
-    },
-  });
+    }
+  }, [result, isExecuting, actionExecuted]);
 
-  // Função para processar salvamentos em lote com debounce
-  const processPendingSaves = useCallback(async () => {
-    if (Object.keys(pendingSaves).length === 0 || isSaving) return;
+  // Função para carregar cidades da API do IBGE
+  const loadCitiesByState = async (stateCode: string) => {
+    if (!stateCode) {
+      setCities([]);
+      return;
+    }
 
-    setIsSaving(true);
-    setHasUnsavedChanges(false);
-    const fieldsToSave = { ...pendingSaves };
-    setPendingSaves({});
-
+    setLoadingCities(true);
     try {
-      const formData = form.getValues();
-      const updatedData = { ...formData, ...fieldsToSave };
+      // Buscar o ID do estado pela sigla
+      const statesResponse = await fetch(
+        "https://servicodados.ibge.gov.br/api/v1/localidades/estados",
+      );
+      const states: IBGEState[] = await statesResponse.json();
+      const selectedState = states.find((state) => state.sigla === stateCode);
 
-      const result = await updateProfileAction.executeAsync({
-        patientId: patientData.id,
-        ...updatedData,
-      });
-
-      if (result?.data?.success) {
-        Object.keys(fieldsToSave).forEach((fieldName) => {
-          setFieldStatus((prev) => ({ ...prev, [fieldName]: "saved" }));
-        });
-
-        setTimeout(() => {
-          Object.keys(fieldsToSave).forEach((fieldName) => {
-            setFieldStatus((prev) => ({ ...prev, [fieldName]: "idle" }));
-          });
-        }, 1500);
-      } else {
-        const errorMessage =
-          result?.data?.error || "Erro desconhecido ao salvar";
-        Object.keys(fieldsToSave).forEach((fieldName) => {
-          setFieldStatus((prev) => ({ ...prev, [fieldName]: "error" }));
-        });
-        toast.error(errorMessage);
-
-        setTimeout(() => {
-          Object.keys(fieldsToSave).forEach((fieldName) => {
-            setFieldStatus((prev) => ({ ...prev, [fieldName]: "idle" }));
-          });
-        }, 3000);
+      if (selectedState) {
+        // Buscar cidades do estado
+        const citiesResponse = await fetch(
+          `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedState.id}/municipios`,
+        );
+        const citiesData: IBGECity[] = await citiesResponse.json();
+        setCities(citiesData.sort((a, b) => a.nome.localeCompare(b.nome)));
       }
     } catch (error) {
-      console.error("Erro ao salvar campos:", error);
-      Object.keys(fieldsToSave).forEach((fieldName) => {
-        setFieldStatus((prev) => ({ ...prev, [fieldName]: "error" }));
-      });
-      toast.error("Erro ao salvar campos");
-
-      setTimeout(() => {
-        Object.keys(fieldsToSave).forEach((fieldName) => {
-          setFieldStatus((prev) => ({ ...prev, [fieldName]: "idle" }));
-        });
-      }, 3000);
+      console.error("Erro ao carregar cidades:", error);
+      toast.error("Erro ao carregar cidades");
+      setCities([]);
     } finally {
-      setIsSaving(false);
+      setLoadingCities(false);
     }
-  }, [pendingSaves, isSaving, form, updateProfileAction, patientData.id]);
+  };
 
-  // Função para adicionar campo à fila de salvamento
-  const saveField = useCallback(
-    (fieldName: string, value: any) => {
-      // Validação para evitar salvar valores incorretos
-      if (!fieldName || fieldName.trim() === "") {
-        console.error("❌ Campo inválido:", fieldName);
-        return;
-      }
-
-      // Campos name e socialName não fazem mais parte do formulário editável
-
-      // Log para debug
-      console.log("💾 Salvando campo:", {
-        fieldName,
-        value,
-        type: typeof value,
-      });
-
-      setPendingSaves((prev) => ({ ...prev, [fieldName]: value }));
-      setHasUnsavedChanges(true);
-
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-
-      if (!maxWaitTimeoutRef.current) {
-        maxWaitTimeoutRef.current = setTimeout(async () => {
-          await processPendingSaves();
-        }, 3000);
-      }
-
-      saveTimeoutRef.current = setTimeout(async () => {
-        if (maxWaitTimeoutRef.current) {
-          clearTimeout(maxWaitTimeoutRef.current);
-          maxWaitTimeoutRef.current = null;
-        }
-
-        setPendingSaves((currentPending) => {
-          Object.keys(currentPending).forEach((field) => {
-            setFieldStatus((prev) => ({ ...prev, [field]: "saving" }));
-          });
-          return currentPending;
-        });
-
-        try {
-          await processPendingSaves();
-        } catch (error) {
-          console.error("Erro no processamento de salvamentos:", error);
-        }
-      }, 500);
-    },
-    [processPendingSaves, patientData],
-  );
-
-  // Monitorar mudanças nos campos da etapa atual
-  useEffect(() => {
-    const currentStepFields = WIZARD_STEPS[currentStep]?.fields || [];
-
-    const subscription = form.watch((value, { name, type }) => {
-      if (!name || type === "blur" || !currentStepFields.includes(name)) return;
-
-      const timeouts = new Map<string, NodeJS.Timeout>();
-
-      const currentValue = value[name];
-      const originalValue = (patientData as any)[name];
-
-      console.log("👀 Campo monitorado:", {
-        fieldName: name,
-        currentValue,
-        originalValue,
-        step: currentStep,
-        shouldInclude: currentStepFields.includes(name),
-      });
-
-      // Campos name e socialName não fazem mais parte do formulário
-      // (são exibidos como dados informativos)
-
-      // Comparação inteligente (incluindo datas)
-      const shouldSave = currentValue !== originalValue;
-
-      if (shouldSave) {
-        console.log("💾 Agendando salvamento:", {
-          fieldName: name,
-          currentValue,
-        });
-
-        const existingTimeout = timeouts.get(name);
-        if (existingTimeout) {
-          clearTimeout(existingTimeout);
-        }
-
-        const timeout = setTimeout(() => {
-          saveField(name, currentValue);
-          timeouts.delete(name);
-        }, 600);
-
-        timeouts.set(name, timeout);
-      }
-
-      return () => {
-        timeouts.forEach((timeout) => clearTimeout(timeout));
-        timeouts.clear();
-      };
-    });
-
-    return () => subscription.unsubscribe();
-  }, [form, currentStep, patientData, saveField]);
-
-  // Função para buscar municípios por UF
-  const buscarMunicipios = useCallback(async (uf: string) => {
-    if (!uf) {
-      setMunicipios([]);
-      return Promise.resolve();
+  // Função para carregar estados de países estrangeiros
+  const loadStatesByCountry = async (countryCode: string) => {
+    if (!countryCode || countryCode === "BR") {
+      setForeignStates([]);
+      return;
     }
 
-    setLoadingMunicipios(true);
+    setLoadingForeignStates(true);
+
+    // Primeiro, tentar usar dados estáticos se disponíveis
+    if (ESTADOS_PAISES_ESTATICOS[countryCode]) {
+      const staticStates = ESTADOS_PAISES_ESTATICOS[countryCode].map(
+        (state) => ({
+          id: 0, // ID fictício para dados estáticos
+          name: state.label,
+          iso2: state.value,
+        }),
+      );
+      setForeignStates(staticStates);
+      setLoadingForeignStates(false);
+      return;
+    }
+
+    // Se não há dados estáticos, verificar se há API key antes de tentar
+    const apiKey = process.env.NEXT_PUBLIC_COUNTRY_STATE_CITY_API_KEY;
+    if (!apiKey) {
+      // Sem API key e sem dados estáticos = fallback silencioso
+      setForeignStates([]);
+      setLoadingForeignStates(false);
+      return;
+    }
+
+    // Tentar a API apenas se houver API key
     try {
       const response = await fetch(
-        `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`,
+        `https://api.countrystatecity.in/v1/countries/${countryCode}/states`,
+        {
+          headers: {
+            "X-CSCAPI-KEY": apiKey,
+          },
+        },
       );
-      const data: Municipio[] = await response.json();
-      const municipiosOrdenados = data.sort((a, b) =>
-        a.nome.localeCompare(b.nome),
-      );
-      setMunicipios(municipiosOrdenados);
-      return Promise.resolve();
-    } catch (error) {
-      toast.error("Erro ao carregar municípios");
-      setMunicipios([]);
-      return Promise.reject(error);
-    } finally {
-      setLoadingMunicipios(false);
-    }
-  }, []);
 
-  // Função para consultar CEP
-  const consultarCEP = useCallback(
-    async (cep: string) => {
-      const cepLimpo = cep.replace(/\D/g, "");
-      if (cepLimpo.length !== 8) return;
-
-      try {
-        const response = await fetch(
-          `https://viacep.com.br/ws/${cepLimpo}/json/`,
+      if (response.ok) {
+        const statesData: CountryStateCityState[] = await response.json();
+        setForeignStates(
+          statesData.sort((a, b) => a.name.localeCompare(b.name)),
         );
-        const data = await response.json();
-
-        if (data.erro) {
-          toast.error("CEP não encontrado");
-          return;
-        }
-
-        const tipoLogradouro = data.logradouro?.toLowerCase().includes("rua")
-          ? "rua"
-          : data.logradouro?.toLowerCase().includes("avenida")
-            ? "avenida"
-            : "rua";
-
-        const nomeLogradouro =
-          data.logradouro?.replace(
-            /^(Rua|Avenida|Travessa|Alameda|Praça|Estrada|Rodovia)\s+/i,
-            "",
-          ) || "";
-
-        form.setValue("addressType", tipoLogradouro as any);
-        form.setValue("addressName", nomeLogradouro);
-        form.setValue("addressNeighborhood", data.bairro || "");
-        form.setValue("city", data.localidade || "");
-        form.setValue("state", data.uf || "");
-
-        if (data.uf) {
-          await buscarMunicipios(data.uf);
-        }
-
-        toast.success("Endereço preenchido automaticamente!");
-      } catch (error) {
-        toast.error("Erro ao consultar CEP");
+      } else {
+        // Fallback silencioso
+        setForeignStates([]);
       }
-    },
-    [form, buscarMunicipios],
-  );
-
-  // Função para determinar nacionalidade baseada no país
-  const determinarNacionalidade = useCallback((pais: string) => {
-    const nacionalidades: Record<string, string> = {
-      BR: "Brasileira",
-      AR: "Argentina",
-      BO: "Boliviana",
-      CL: "Chilena",
-      CO: "Colombiana",
-      EC: "Equatoriana",
-      GF: "Francesa",
-      GY: "Guianense",
-      PY: "Paraguaia",
-      PE: "Peruana",
-      SR: "Surinamesa",
-      UY: "Uruguaia",
-      VE: "Venezuelana",
-      US: "Americana",
-      CA: "Canadense",
-      MX: "Mexicana",
-      PT: "Portuguesa",
-      ES: "Espanhola",
-      IT: "Italiana",
-      FR: "Francesa",
-      DE: "Alemã",
-      JP: "Japonesa",
-      CN: "Chinesa",
-      OTHER: "Outra",
-    };
-    return nacionalidades[pais] || "Não informada";
-  }, []);
-
-  // Função para calcular idade
-  const calcularIdade = useCallback((birthDate: string) => {
-    if (!birthDate) return null;
-    const hoje = new Date();
-    const nascimento = new Date(birthDate);
-    let idade = hoje.getFullYear() - nascimento.getFullYear();
-    const mes = hoje.getMonth() - nascimento.getMonth();
-    if (mes < 0 || (mes === 0 && hoje.getDate() < nascimento.getDate())) {
-      idade--;
+    } catch (error) {
+      // Fallback silencioso - não logar erro para evitar poluir console
+      setForeignStates([]);
+    } finally {
+      setLoadingForeignStates(false);
     }
-    return idade;
-  }, []);
+  };
 
-  // Verificar se é menor de 16 anos
-  const birthDate = form.watch("birthDate");
-  const idade = birthDate ? calcularIdade(birthDate) : null;
-  const precisaGuardiao = idade !== null && idade < 16;
+  // Função para carregar cidades de países estrangeiros
+  const loadForeignCitiesByState = async (
+    countryCode: string,
+    stateCode: string,
+  ) => {
+    if (!countryCode || !stateCode || countryCode === "BR") {
+      setForeignCities([]);
+      return;
+    }
 
-  // Verificar se é estrangeiro
-  const birthCountry = form.watch("birthCountry");
-  const isEstrangeiro = birthCountry && birthCountry !== "BR";
+    // Verificar se há API key antes de tentar
+    const apiKey = process.env.NEXT_PUBLIC_COUNTRY_STATE_CITY_API_KEY;
+    if (!apiKey) {
+      // Sem API key = fallback silencioso
+      setForeignCities([]);
+      return;
+    }
 
-  // Recarregar dados do paciente no formulário quando o componente monta
+    setLoadingForeignCities(true);
+    try {
+      const response = await fetch(
+        `https://api.countrystatecity.in/v1/countries/${countryCode}/states/${stateCode}/cities`,
+        {
+          headers: {
+            "X-CSCAPI-KEY": apiKey,
+          },
+        },
+      );
+
+      if (response.ok) {
+        const citiesData: CountryStateCityCity[] = await response.json();
+        setForeignCities(
+          citiesData.sort((a, b) => a.name.localeCompare(b.name)),
+        );
+      } else {
+        // Fallback silencioso
+        setForeignCities([]);
+      }
+    } catch (error) {
+      // Fallback silencioso - não logar erro para evitar poluir console
+      setForeignCities([]);
+    } finally {
+      setLoadingForeignCities(false);
+    }
+  };
+
+  // Carregar cidades quando o estado de nascimento mudar
   useEffect(() => {
-    console.log("🔄 Inicializando formulário com dados do paciente:", {
-      name: patientData.name,
-      socialName: patientData.socialName,
-      birthCountry: patientData.birthCountry,
-      nationality: patientData.nationality,
-    });
+    const birthState = form.watch("birthState");
+    const birthCountry = form.watch("birthCountry");
 
-    // APENAS carregar dados não-críticos
-    // Campos name e socialName são definidos no defaultValues e NÃO devem ser alterados
-
-    // Tratar nacionalidade
-    if (patientData.birthCountry) {
-      form.setValue("birthCountry", patientData.birthCountry);
+    if (birthCountry === "BR" && birthState) {
+      loadCitiesByState(birthState);
+    } else {
+      setCities([]);
     }
-    if (patientData.nationality) {
-      form.setValue("nationality", patientData.nationality);
-    } else if (patientData.birthCountry) {
-      // Se não há nacionalidade salva, calcular baseada no país
-      const nacionalidade = determinarNacionalidade(patientData.birthCountry);
-      form.setValue("nationality", nacionalidade);
-    }
+  }, [form.watch("birthState"), form.watch("birthCountry")]);
 
-    // Carregar municípios se há estado salvo
-    if (patientData.state) {
-      form.setValue("state", patientData.state);
-      buscarMunicipios(patientData.state).then(() => {
-        if (patientData.city) {
-          form.setValue("city", patientData.city);
-        }
-      });
-    }
-  }, [patientData, form, determinarNacionalidade, buscarMunicipios]);
-
-  // Proteção contínua removida - campos agora são disabled
-
-  // Sincronizar dados quando mudamos entre etapas
+  // Carregar estados quando o país mudar (para países estrangeiros)
   useEffect(() => {
-    if (currentStep === 1) {
-      // Etapa de nacionalidade
-      console.log("🔧 Sincronizando etapa 1 - Nacionalidade");
-      const currentBirthCountry = form.getValues("birthCountry");
-      const currentNationality = form.getValues("nationality");
+    const birthCountry = form.watch("birthCountry");
 
-      // Se os valores no formulário estão vazios, mas existem no banco
-      if (!currentBirthCountry && patientData.birthCountry) {
-        form.setValue("birthCountry", patientData.birthCountry);
-      }
-
-      if (!currentNationality && patientData.nationality) {
-        form.setValue("nationality", patientData.nationality);
-      } else if (!currentNationality && patientData.birthCountry) {
-        const nacionalidade = determinarNacionalidade(patientData.birthCountry);
-        form.setValue("nationality", nacionalidade);
-      }
+    if (birthCountry && birthCountry !== "BR") {
+      loadStatesByCountry(birthCountry);
+      // Limpar cidade quando país mudar
+      form.setValue("birthCity", "");
+    } else {
+      setForeignStates([]);
+      setForeignCities([]);
     }
-  }, [currentStep, form, patientData, determinarNacionalidade]);
+  }, [form.watch("birthCountry")]);
 
-  // Sincronizar dados quando mudamos para a etapa de endereço
+  // Carregar cidades de países estrangeiros quando estado mudar
   useEffect(() => {
-    if (currentStep === 3) {
-      // Etapa de endereço
-      const currentState = form.getValues("state");
-      const currentCity = form.getValues("city");
+    const birthCountry = form.watch("birthCountry");
+    const birthState = form.watch("birthState");
 
-      // Se há estado salvo mas não está no formulário, aplicar
-      if (!currentState && patientData.state) {
-        form.setValue("state", patientData.state);
-      }
-
-      // Se há estado (do banco ou formulário), carregar municípios
-      const stateToLoad = currentState || patientData.state;
-      if (stateToLoad) {
-        buscarMunicipios(stateToLoad).then(() => {
-          // Após carregar municípios, definir a cidade se existir no banco
-          if (!currentCity && patientData.city) {
-            form.setValue("city", patientData.city);
-          }
-        });
-      }
+    if (birthCountry && birthCountry !== "BR" && birthState) {
+      loadForeignCitiesByState(birthCountry, birthState);
+    } else if (birthCountry !== "BR") {
+      setForeignCities([]);
     }
-  }, [currentStep, form, patientData, buscarMunicipios]);
+  }, [form.watch("birthState"), form.watch("birthCountry")]);
 
-  // Definir nacionalidade inicial baseada no país de nascimento
+  // Carregar dados iniciais quando entrar no modo de edição
   useEffect(() => {
-    const currentNationality = form.getValues("nationality");
+    if (isEditMode) {
+      const birthCountry = form.getValues("birthCountry");
+      const birthState = form.getValues("birthState");
+      const birthCity = form.getValues("birthCity");
 
-    // Só atualizar nacionalidade se:
-    // 1. Há um país selecionado
-    // 2. NÃO há nacionalidade definida OU a nacionalidade atual não corresponde ao país
-    // 3. NÃO estamos na etapa inicial (para evitar conflitos)
-    if (
-      birthCountry &&
-      currentStep > 0 &&
-      (!currentNationality || currentNationality.trim() === "")
-    ) {
-      const nacionalidade = determinarNacionalidade(birthCountry);
-      form.setValue("nationality", nacionalidade);
-      console.log("🌍 Atualizando nacionalidade:", {
-        birthCountry,
-        nacionalidade,
-      });
+      // Carregar estados se for país estrangeiro
+      if (birthCountry && birthCountry !== "BR") {
+        loadStatesByCountry(birthCountry);
+      }
+
+      // Carregar cidades se for Brasil e tem estado
+      if (birthCountry === "BR" && birthState) {
+        loadCitiesByState(birthState);
+      }
+
+      // Carregar cidades se for país estrangeiro e tem estado
+      if (birthCountry && birthCountry !== "BR" && birthState) {
+        loadForeignCitiesByState(birthCountry, birthState);
+      }
+
+      // CORREÇÃO: Forçar reset dos valores para garantir que estão corretos
+      form.reset(defaultFormValues);
     }
-  }, [birthCountry, form, determinarNacionalidade, currentStep]);
+  }, [isEditMode]);
 
-  // Função para navegar entre etapas
+  // Monitorar quando foreignStates mudarem
+  useEffect(() => {
+    if (foreignStates.length > 0) {
+      const birthState = form.getValues("birthState");
+      const motherName = form.getValues("motherName");
+      const foundState = foreignStates.find(
+        (state) => state.iso2 === birthState,
+      );
+
+      // CORREÇÃO: Forçar o valor correto se há discrepância
+      if (foundState && birthState !== motherName) {
+        form.setValue("birthState", birthState, { shouldValidate: true });
+      }
+    }
+  }, [foreignStates]);
+
+  // Funções de navegação
   const nextStep = () => {
     if (currentStep < WIZARD_STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
@@ -909,62 +1008,431 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
     setCurrentStep(stepIndex);
   };
 
-  // Função para validar etapa atual
-  const validateCurrentStep = () => {
-    const currentStepData = WIZARD_STEPS[currentStep];
-    const requiredFields = currentStepData.fields.filter((field) => {
-      // Campos obrigatórios por etapa
-      if (currentStep === 0) return ["sex", "email", "phone"].includes(field);
-      return false;
-    });
-
-    for (const field of requiredFields) {
-      const value = form.getValues(field as keyof ProfileFormData);
-      if (!value || value === "") {
-        const fieldNames: Record<string, string> = {
-          sex: "Sexo",
-          email: "Email",
-          phone: "Telefone",
-        };
-        toast.error(`${fieldNames[field]} é obrigatório`);
-        return false;
-      }
-    }
-    return true;
-  };
-
-  // Função para finalizar o formulário
+  // Função para finalizar edição
   const handleFinish = async () => {
+    setIsSaving(true);
     try {
-      // Se há salvamentos pendentes, processar antes de finalizar
-      if (Object.keys(pendingSaves).length > 0 || hasUnsavedChanges) {
-        // Limpar timeouts existentes
-        if (saveTimeoutRef.current) {
-          clearTimeout(saveTimeoutRef.current);
-          saveTimeoutRef.current = null;
-        }
-        if (maxWaitTimeoutRef.current) {
-          clearTimeout(maxWaitTimeoutRef.current);
-          maxWaitTimeoutRef.current = null;
-        }
+      // Validar campos críticos manualmente primeiro
+      const formData = form.getValues();
 
-        // Processar salvamentos pendentes
-        await processPendingSaves();
+      // Verificar campos obrigatórios manualmente
+      if (!formData.email || formData.email.trim() === "") {
+        toast.error("Email é obrigatório");
+        setIsSaving(false);
+        return;
       }
 
-      // Limpar estados de salvamento
-      setPendingSaves({});
-      setHasUnsavedChanges(false);
+      if (!formData.phone || formData.phone.trim() === "") {
+        toast.error("Telefone é obrigatório");
+        setIsSaving(false);
+        return;
+      }
 
-      // Mostrar mensagem de sucesso
-      toast.success("Perfil atualizado com sucesso!");
+      // Validar email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        toast.error("Email inválido");
+        setIsSaving(false);
+        return;
+      }
+
+      const payload = {
+        patientId: patientData.id,
+        name: patientData.name, // Nome é obrigatório na action (não editável)
+        ...formData,
+        // As datas são enviadas como strings para a action
+        birthDate: formData.birthDate || undefined,
+        naturalizationDate: formData.naturalizationDate || undefined,
+        passportIssueDate: formData.passportIssueDate || undefined,
+        passportExpiryDate: formData.passportExpiryDate || undefined,
+        rgIssueDate: formData.rgIssueDate || undefined,
+      };
+
+      setActionExecuted(true); // Marcar que uma ação foi executada
+      await execute(payload);
+      // O resultado será tratado pelo useEffect
     } catch (error) {
-      console.error("Erro ao finalizar:", error);
-      toast.error("Erro ao salvar alterações finais");
+      console.error("💥 Erro ao finalizar:", error);
+      toast.error("Erro ao salvar alterações");
+      setIsSaving(false);
+      setActionExecuted(false); // Reset da flag em caso de erro
     }
   };
 
-  // Componente para indicador de progresso
+  // MODO VISUALIZAÇÃO - Componentes de blocos informativos
+  const ViewModeHeader = () => (
+    <div className="mb-6 flex items-center justify-between">
+      <div>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+          <Eye className="h-6 w-6 text-blue-600" />
+          Meu Perfil
+        </h1>
+        <p className="mt-1 text-gray-600">
+          Suas informações pessoais e dados de contato
+        </p>
+      </div>
+      <Button
+        onClick={() => setIsEditMode(true)}
+        className="flex items-center gap-2"
+      >
+        <Edit3 className="h-4 w-4" />
+        Editar Perfil
+      </Button>
+    </div>
+  );
+
+  const BasicDataBlock = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <User className="h-5 w-5 text-blue-600" />
+          Dados Básicos
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 gap-3">
+          <div>
+            <p className="text-sm font-medium text-gray-500">Nome Completo</p>
+            <p className="text-gray-900">{patientData.name}</p>
+          </div>
+
+          {patientData.socialName && (
+            <div>
+              <p className="text-sm font-medium text-gray-500">Nome Social</p>
+              <p className="text-gray-900">{patientData.socialName}</p>
+            </div>
+          )}
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">Nome da Mãe</p>
+            <p className="text-gray-900">
+              {patientData.motherUnknown
+                ? "Mãe desconhecida"
+                : patientData.motherName || "Não informado"}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">Sexo</p>
+            <p className="text-gray-900">
+              {patientData.sex === "male" ? "Masculino" : "Feminino"}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">Gênero</p>
+            <p className="text-gray-900">
+              {getGenderLabel(patientData.gender)}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">
+              Data de Nascimento
+            </p>
+            <p className="text-gray-900">{formatDate(patientData.birthDate)}</p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">Raça/Cor</p>
+            <p className="text-gray-900">
+              {getRaceColorLabel(patientData.raceColor)}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const NationalityBlock = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Globe className="h-5 w-5 text-green-600" />
+          Nacionalidade
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 gap-3">
+          <div>
+            <p className="text-sm font-medium text-gray-500">Nacionalidade</p>
+            <p className="text-gray-900">
+              {patientData.nationality || "Brasileira"}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">
+              País de Nascimento
+            </p>
+            <p className="text-gray-900">
+              {getCountryLabel(patientData.birthCountry)}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">
+              Cidade de Nascimento
+            </p>
+            <p className="text-gray-900">
+              {patientData.birthCity || "Não informado"}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">
+              Estado de Nascimento
+            </p>
+            <p className="text-gray-900">
+              {getStateLabel(patientData.birthState)}
+            </p>
+          </div>
+
+          {patientData.naturalizationDate && (
+            <div>
+              <p className="text-sm font-medium text-gray-500">
+                Data de Naturalização
+              </p>
+              <p className="text-gray-900">
+                {formatDate(patientData.naturalizationDate)}
+              </p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const DocumentsBlock = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <IdCard className="h-5 w-5 text-orange-600" />
+          Documentos
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 gap-3">
+          <div>
+            <p className="text-sm font-medium text-gray-500">CPF</p>
+            <p className="text-gray-900">{formatCPF(patientData.cpf)}</p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">CNS</p>
+            <p className="text-gray-900">
+              {patientData.cnsNumber || "Não informado"}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">RG</p>
+            <p className="text-gray-900">
+              {patientData.rgNumber || "Não informado"}
+            </p>
+          </div>
+
+          {patientData.rgIssuer && (
+            <div>
+              <p className="text-sm font-medium text-gray-500">
+                Órgão Emissor RG
+              </p>
+              <p className="text-gray-900">{patientData.rgIssuer}</p>
+            </div>
+          )}
+
+          {patientData.rgIssueDate && (
+            <div>
+              <p className="text-sm font-medium text-gray-500">
+                Data de Emissão RG
+              </p>
+              <p className="text-gray-900">
+                {formatDate(patientData.rgIssueDate)}
+              </p>
+            </div>
+          )}
+
+          {patientData.passportNumber && (
+            <>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Passaporte</p>
+                <p className="text-gray-900">{patientData.passportNumber}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  País do Passaporte
+                </p>
+                <p className="text-gray-900">
+                  {patientData.passportCountry || "Não informado"}
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const AddressBlock = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Home className="h-5 w-5 text-purple-600" />
+          Endereço
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 gap-3">
+          <div>
+            <p className="text-sm font-medium text-gray-500">CEP</p>
+            <p className="text-gray-900">{formatCEP(patientData.zipCode)}</p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">Logradouro</p>
+            <p className="text-gray-900">
+              {patientData.addressType && patientData.addressName
+                ? `${getAddressTypeLabel(patientData.addressType)} ${patientData.addressName}`
+                : "Não informado"}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">Número</p>
+            <p className="text-gray-900">
+              {patientData.addressNumber || "Não informado"}
+            </p>
+          </div>
+
+          {patientData.addressComplement && (
+            <div>
+              <p className="text-sm font-medium text-gray-500">Complemento</p>
+              <p className="text-gray-900">{patientData.addressComplement}</p>
+            </div>
+          )}
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">Bairro</p>
+            <p className="text-gray-900">
+              {patientData.addressNeighborhood || "Não informado"}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">Cidade</p>
+            <p className="text-gray-900">
+              {patientData.city || "Não informado"}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">Estado</p>
+            <p className="text-gray-900">{getStateLabel(patientData.state)}</p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">País</p>
+            <p className="text-gray-900">
+              {getCountryLabel(patientData.country)}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const ContactsBlock = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Phone className="h-5 w-5 text-indigo-600" />
+          Contatos
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <p className="text-sm font-medium text-gray-500">Email Principal</p>
+            <p className="text-gray-900">{patientData.email}</p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">Telefone</p>
+            <p className="text-gray-900">{formatPhone(patientData.phone)}</p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">
+              Contato de Emergência
+            </p>
+            <p className="text-gray-900">
+              {patientData.emergencyContact || "Não informado"}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500">
+              Telefone de Emergência
+            </p>
+            <p className="text-gray-900">
+              {formatPhone(patientData.emergencyPhone)}
+            </p>
+          </div>
+
+          {patientData.guardianName && (
+            <>
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  Guardião/Responsável
+                </p>
+                <p className="text-gray-900">{patientData.guardianName}</p>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-500">Parentesco</p>
+                <p className="text-gray-900">
+                  {getRelationshipLabel(patientData.guardianRelationship)}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  CPF do Guardião
+                </p>
+                <p className="text-gray-900">
+                  {formatCPF(patientData.guardianCpf)}
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // MODO EDIÇÃO - Componentes do Wizard
+  const EditModeHeader = () => (
+    <div className="mb-6 flex items-center justify-between">
+      <div>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+          <Edit3 className="h-6 w-6 text-blue-600" />
+          Editando Perfil
+        </h1>
+        <p className="mt-1 text-gray-600">Atualize suas informações pessoais</p>
+      </div>
+      <Button
+        variant="outline"
+        onClick={() => {
+          setIsEditMode(false);
+          setCurrentStep(0);
+          form.reset();
+        }}
+      >
+        Cancelar
+      </Button>
+    </div>
+  );
+
   const ProgressIndicator = () => {
     const progress = ((currentStep + 1) / WIZARD_STEPS.length) * 100;
 
@@ -1009,1170 +1477,1152 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
     );
   };
 
-  // Componente para indicador global de salvamento
-  const GlobalSaveIndicator = () => {
-    if (isSaving) {
-      const isFinishing = currentStep === WIZARD_STEPS.length - 1;
-      return (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-white shadow-lg">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm font-medium">
-            {isFinishing ? "Finalizando..." : "Salvando..."}
-          </span>
-        </div>
-      );
-    }
+  // Renderização das etapas do wizard (versão básica)
+  const renderBasicStep = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <User className="h-5 w-5" />
+          Dados Básicos
+        </CardTitle>
+        <p className="text-sm text-gray-600">
+          Informações essenciais de identificação
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <FormField
+          control={form.control}
+          name="socialName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nome Social (opcional)</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="Nome social" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-    if (hasUnsavedChanges && !isSaving) {
-      return (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-white shadow-lg">
-          <AlertCircle className="h-4 w-4" />
-          <span className="text-sm font-medium">Mudanças não salvas</span>
-        </div>
-      );
-    }
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="motherName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nome da Mãe</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    disabled={form.watch("motherUnknown")}
+                    placeholder="Nome completo da mãe"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-    return null;
-  };
-
-  // Função para renderizar cada etapa
-  const renderStep = () => {
-    const currentStepData = WIZARD_STEPS[currentStep];
-    const StepIcon = currentStepData.icon;
-
-    switch (currentStepData.id) {
-      case "basic":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <StepIcon className="h-5 w-5" />
-                {currentStepData.title}
-              </CardTitle>
-              <p className="text-sm text-gray-600">
-                {currentStepData.description}
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {/* CAMPOS INFORMATIVOS: Mostrar dados reais do banco */}
-                <div className="space-y-3">
-                  <div>
-                    <FormLabel className="text-sm font-medium text-gray-700">
-                      Nome Completo *
-                    </FormLabel>
-                    <div className="mt-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                      <p className="text-sm text-gray-900">
-                        {patientData.name}
-                      </p>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500">
-                      📋 Campo somente leitura - Entre em contato para
-                      alterações
-                    </p>
-                  </div>
+          <FormField
+            control={form.control}
+            name="motherUnknown"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-y-0 space-x-3 rounded-md border p-4">
+                <FormControl>
+                  <input
+                    type="checkbox"
+                    checked={field.value}
+                    onChange={(e) => {
+                      field.onChange(e.target.checked);
+                      if (e.target.checked) {
+                        form.setValue("motherName", "");
+                      }
+                    }}
+                    className="mt-1"
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel className="text-sm font-normal">
+                    Mãe desconhecida
+                  </FormLabel>
+                  <p className="text-muted-foreground text-xs">
+                    Marque esta opção se a mãe for desconhecida
+                  </p>
                 </div>
+              </FormItem>
+            )}
+          />
+        </div>
 
-                <div className="space-y-3">
-                  <div>
-                    <FormLabel className="text-sm font-medium text-gray-700">
-                      Nome Social/Apelido
-                    </FormLabel>
-                    <div className="mt-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-                      <p className="text-sm text-gray-900">
-                        {patientData.socialName || "Não informado"}
-                      </p>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500">
-                      📋 Campo somente leitura - Entre em contato para
-                      alterações
-                    </p>
-                  </div>
-                </div>
-              </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="sex"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Sexo *</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o sexo" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="male">Masculino</SelectItem>
+                    <SelectItem value="female">Feminino</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="motherName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome da Mãe</FormLabel>
+          <FormField
+            control={form.control}
+            name="gender"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Gênero</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o gênero" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="cisgender">Cisgênero</SelectItem>
+                    <SelectItem value="transgenero">Transgênero</SelectItem>
+                    <SelectItem value="nao_binario">Não binário</SelectItem>
+                    <SelectItem value="outro">Outro</SelectItem>
+                    <SelectItem value="nao_informado">Não informado</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="birthDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Data de Nascimento</FormLabel>
+                <FormControl>
+                  <Input {...field} type="date" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="raceColor"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Raça/Cor</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a raça/cor" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="branca">Branca</SelectItem>
+                    <SelectItem value="preta">Preta</SelectItem>
+                    <SelectItem value="parda">Parda</SelectItem>
+                    <SelectItem value="amarela">Amarela</SelectItem>
+                    <SelectItem value="indigena">Indígena</SelectItem>
+                    <SelectItem value="sem_informacao">
+                      Sem informação
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email Principal *</FormLabel>
+                <FormControl>
+                  <Input {...field} type="email" placeholder="seu@email.com" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Telefone *</FormLabel>
+                <FormControl>
+                  <PatternFormat
+                    format="(##) #####-####"
+                    mask="_"
+                    customInput={Input}
+                    placeholder="(11) 99999-9999"
+                    value={field.value}
+                    onValueChange={(values) => {
+                      field.onChange(values.formattedValue);
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Renderizar etapa de Nacionalidade
+  const renderNationalityStep = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Globe className="h-5 w-5 text-green-600" />
+          Nacionalidade
+        </CardTitle>
+        <p className="text-sm text-gray-600">
+          Informações sobre nacionalidade e local de nascimento
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="nationality"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nacionalidade</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="Ex: Brasileira" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="birthCountry"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>País de Nascimento</FormLabel>
+                <Select
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    // Auto-completar nacionalidade baseada no país
+                    const selectedCountry = PAISES.find(
+                      (p) => p.value === value,
+                    );
+                    if (selectedCountry) {
+                      if (value === "BR") {
+                        form.setValue("nationality", "Brasileira");
+                      } else {
+                        form.setValue(
+                          "nationality",
+                          selectedCountry.label.replace("Brasil", "Brasileira"),
+                        );
+                      }
+                    }
+                  }}
+                  value={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o país" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {PAISES.map((pais) => (
+                      <SelectItem key={pais.value} value={pais.value}>
+                        {pais.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="birthState"
+            render={({ field }) => {
+              return (
+                <FormItem>
+                  <FormLabel>
+                    {form.watch("birthCountry") === "BR"
+                      ? "Estado de Nascimento"
+                      : "Estado/Província de Nascimento"}
+                  </FormLabel>
+                  {form.watch("birthCountry") === "BR" ? (
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Limpar cidade quando estado mudar
+                        form.setValue("birthCity", "");
+                      }}
+                      value={field.value}
+                    >
                       <FormControl>
-                        <Input
-                          {...field}
-                          disabled={form.watch("motherUnknown")}
-                          placeholder={
-                            form.watch("motherUnknown")
-                              ? "Mãe desconhecida"
-                              : "Nome completo da mãe"
-                          }
-                        />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o estado" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="motherUnknown"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-y-0 space-x-3 rounded-md border p-4">
+                      <SelectContent>
+                        {ESTADOS_BRASILEIROS.map((estado) => (
+                          <SelectItem key={estado.value} value={estado.value}>
+                            {estado.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : // Select para estados de países estrangeiros
+                  foreignStates.length > 0 ? (
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Limpar cidade quando estado mudar
+                        form.setValue("birthCity", "");
+                      }}
+                      value={form.getValues("birthState")}
+                      disabled={
+                        !form.watch("birthCountry") || loadingForeignStates
+                      }
+                    >
                       <FormControl>
-                        <input
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={(e) => {
-                            field.onChange(e.target.checked);
-                            if (e.target.checked) {
-                              form.setValue("motherName", "");
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={
+                              !form.watch("birthCountry")
+                                ? "Primeiro selecione o país"
+                                : loadingForeignStates
+                                  ? "Carregando estados..."
+                                  : "Selecione o estado/província"
                             }
-                          }}
-                          className="mt-1"
-                        />
+                          />
+                        </SelectTrigger>
                       </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel className="text-sm font-normal">
-                          Mãe desconhecida
-                        </FormLabel>
-                        <p className="text-muted-foreground text-xs">
-                          Marque esta opção se a mãe for desconhecida
-                        </p>
-                      </div>
-                    </FormItem>
+                      <SelectContent>
+                        {foreignStates.map((state) => (
+                          <SelectItem key={state.iso2} value={state.iso2}>
+                            {state.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    // Input livre quando não há dados disponíveis
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Digite o estado/província"
+                        disabled={loadingForeignStates}
+                      />
+                    </FormControl>
                   )}
-                />
-              </div>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="sex"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Sexo *</FormLabel>
+          <FormField
+            control={form.control}
+            name="birthCity"
+            render={({ field }) => {
+              const currentCityValue = form.getValues("birthCity");
+
+              return (
+                <FormItem>
+                  <FormLabel>Cidade de Nascimento</FormLabel>
+                  {form.watch("birthCountry") === "BR" ? (
+                    // Brasil: usar select se há cidades, senão input livre
+                    cities.length > 0 ? (
                       <Select
                         onValueChange={field.onChange}
-                        value={field.value}
+                        value={currentCityValue || field.value}
+                        disabled={!form.watch("birthState") || loadingCities}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione o sexo" />
+                            <SelectValue
+                              placeholder={
+                                !form.watch("birthState")
+                                  ? "Primeiro selecione o estado"
+                                  : loadingCities
+                                    ? "Carregando cidades..."
+                                    : "Selecione a cidade"
+                              }
+                            />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="male">Masculino</SelectItem>
-                          <SelectItem value="female">Feminino</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="gender"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gênero</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o gênero" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="cisgender">Cisgênero</SelectItem>
-                          <SelectItem value="transgenero">
-                            Transgênero
-                          </SelectItem>
-                          <SelectItem value="nao_binario">
-                            Não binário
-                          </SelectItem>
-                          <SelectItem value="outro">Outro</SelectItem>
-                          <SelectItem value="nao_informado">
-                            Não informado
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="birthDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data de Nascimento</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="date" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="raceColor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Raça/Cor</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="branca">Branca</SelectItem>
-                          <SelectItem value="preta">Preta</SelectItem>
-                          <SelectItem value="parda">Parda</SelectItem>
-                          <SelectItem value="amarela">Amarela</SelectItem>
-                          <SelectItem value="indigena">Indígena</SelectItem>
-                          <SelectItem value="sem_informacao">
-                            Sem informação
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Principal *</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="email"
-                          placeholder="usuario@email.com"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefone *</FormLabel>
-                      <FormControl>
-                        <PatternFormat
-                          format="(##) #####-####"
-                          mask="_"
-                          customInput={Input}
-                          placeholder="(11) 99999-9999"
-                          value={field.value}
-                          onValueChange={(values) => {
-                            // Só salvar se o telefone estiver completo (11 dígitos) ou vazio
-                            if (
-                              values.value.length === 11 ||
-                              values.value.length === 0
-                            ) {
-                              field.onChange(values.formattedValue);
-                            } else if (values.value.length > 0) {
-                              // Se tiver dígitos mas não estiver completo, não salvar
-                              field.onChange("");
-                            }
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        );
-
-      case "nationality":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <StepIcon className="h-5 w-5" />
-                {currentStepData.title}
-              </CardTitle>
-              <p className="text-sm text-gray-600">
-                {currentStepData.description}
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="birthCountry"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>País de Nascimento</FormLabel>
-                      <Select
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          // Determinar nacionalidade automaticamente apenas se não há uma já definida
-                          // ou se a nacionalidade atual não corresponde ao novo país
-                          const currentNationality =
-                            form.getValues("nationality");
-                          const newNationality = determinarNacionalidade(value);
-
-                          // Sempre atualizar a nacionalidade quando o país muda
-                          form.setValue("nationality", newNationality);
-                        }}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o país" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {PAISES.map((pais) => (
-                            <SelectItem key={pais.value} value={pais.value}>
-                              {pais.label}
+                          {cities.map((city) => (
+                            <SelectItem key={city.id} value={city.nome}>
+                              {city.nome}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="nationality"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nacionalidade</FormLabel>
+                    ) : (
                       <FormControl>
                         <Input
                           {...field}
-                          placeholder="Determinada automaticamente"
-                          disabled
+                          value={currentCityValue || field.value}
+                          onChange={field.onChange}
+                          placeholder={
+                            !form.watch("birthState")
+                              ? "Primeiro selecione o estado"
+                              : loadingCities
+                                ? "Carregando cidades..."
+                                : "Digite a cidade"
+                          }
+                          disabled={!form.watch("birthState") || loadingCities}
                         />
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {isEstrangeiro && (
-                <>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="birthCity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cidade de Nascimento</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="birthState"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Estado/Província de Nascimento</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="naturalizationDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Data de Naturalização (se aplicável)
-                        </FormLabel>
-                        <FormControl>
-                          <Input {...field} type="date" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
-            </CardContent>
-          </Card>
-        );
-
-      case "documents":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <StepIcon className="h-5 w-5" />
-                {currentStepData.title}
-              </CardTitle>
-              <p className="text-sm text-gray-600">
-                {currentStepData.description}
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Documentos Brasileiros */}
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-900">
-                  Documentos Brasileiros
-                </h4>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="cpf"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>CPF</FormLabel>
-                        <FormControl>
-                          <PatternFormat
-                            format="###.###.###-##"
-                            mask="_"
-                            customInput={Input}
-                            placeholder="123.456.789-00"
-                            value={field.value}
-                            onValueChange={(values) => {
-                              // Só salvar se o CPF estiver completo (11 dígitos) ou vazio
-                              if (
-                                values.value.length === 11 ||
-                                values.value.length === 0
-                              ) {
-                                field.onChange(values.formattedValue);
-                              } else if (values.value.length > 0) {
-                                // Se tiver dígitos mas não estiver completo, não salvar
-                                field.onChange("");
-                              }
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="cnsNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cartão Nacional de Saúde (CNS)</FormLabel>
-                        <FormControl>
-                          <PatternFormat
-                            format="### #### #### ####"
-                            mask="_"
-                            customInput={Input}
-                            placeholder="123 4567 8901 2345"
-                            value={field.value}
-                            onValueChange={(values) => {
-                              // Só salvar se o CNS estiver completo (15 dígitos) ou vazio
-                              if (
-                                values.value.length === 15 ||
-                                values.value.length === 0
-                              ) {
-                                field.onChange(values.formattedValue);
-                              } else if (values.value.length > 0) {
-                                // Se tiver dígitos mas não estiver completo, não salvar
-                                field.onChange("");
-                              }
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* RG */}
-                <div className="space-y-4">
-                  <h5 className="font-medium text-gray-700">RG/Identidade</h5>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <FormField
-                      control={form.control}
-                      name="rgNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Número do RG</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="rgComplement"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Complemento</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Ex: X" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="rgState"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>UF Emissor</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="UF" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {estados.map((estado) => (
-                                <SelectItem
-                                  key={estado.value}
-                                  value={estado.value}
-                                >
-                                  {estado.value}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="rgIssuer"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Órgão Emissor</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="Ex: SSP, DETRAN, PC"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="rgIssueDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data de Emissão</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="date" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Passaporte para estrangeiros */}
-              {isEstrangeiro && (
-                <div className="space-y-4">
-                  <Separator />
-                  <h4 className="font-medium text-gray-900">
-                    Dados do Passaporte
-                  </h4>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="passportNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Número do Passaporte</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="Digite o número do passaporte"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="passportCountry"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>País Emissor do Passaporte</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o país emissor" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {PAISES.map((pais) => (
-                                <SelectItem key={pais.value} value={pais.value}>
-                                  {pais.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="passportIssueDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data de Emissão</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="date" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="passportExpiryDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data de Validade</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="date" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        );
-
-      case "address":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <StepIcon className="h-5 w-5" />
-                {currentStepData.title}
-              </CardTitle>
-              <p className="text-sm text-gray-600">
-                {currentStepData.description}
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* CEP com consulta automática */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="zipCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CEP</FormLabel>
+                    )
+                  ) : // Países estrangeiros: usar select se há cidades, senão input livre
+                  foreignCities.length > 0 ? (
+                    <Select
+                      onValueChange={field.onChange}
+                      value={currentCityValue || field.value}
+                      disabled={
+                        !form.watch("birthState") || loadingForeignCities
+                      }
+                    >
                       <FormControl>
-                        <PatternFormat
-                          format="#####-###"
-                          mask="_"
-                          customInput={Input}
-                          placeholder="12345-678"
-                          value={field.value}
-                          onValueChange={(values) => {
-                            field.onChange(values.formattedValue);
-                            if (
-                              values.formattedValue &&
-                              values.formattedValue.length === 9
-                            ) {
-                              consultarCEP(values.formattedValue);
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={
+                              !form.watch("birthState")
+                                ? "Primeiro selecione o estado"
+                                : loadingForeignCities
+                                  ? "Carregando cidades..."
+                                  : "Selecione a cidade"
                             }
-                          }}
-                        />
+                          />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                      <SelectContent>
+                        {foreignCities.map((city) => (
+                          <SelectItem key={city.id} value={city.name}>
+                            {city.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    // Input livre quando não há cidades disponíveis
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={currentCityValue || field.value}
+                        onChange={field.onChange}
+                        placeholder={
+                          !form.watch("birthState")
+                            ? "Primeiro selecione o estado"
+                            : loadingForeignCities
+                              ? "Carregando cidades..."
+                              : "Digite a cidade"
+                        }
+                        disabled={
+                          !form.watch("birthState") || loadingForeignCities
+                        }
+                      />
+                    </FormControl>
                   )}
-                />
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+        </div>
 
-                <FormField
-                  control={form.control}
-                  name="country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>País</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+        {form.watch("birthCountry") && form.watch("birthCountry") !== "BR" && (
+          <FormField
+            control={form.control}
+            name="naturalizationDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Data de Naturalização (se aplicável)</FormLabel>
+                <FormControl>
+                  <Input {...field} type="date" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
-              {/* Tipo e nome do logradouro */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <FormField
-                  control={form.control}
-                  name="addressName"
-                  render={({ field }) => (
-                    <FormItem className="w-full md:col-span-2">
-                      <FormLabel>Nome do Logradouro</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Ex: Rua das Flores" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="addressType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tipo de Logradouro</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Tipo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="rua">Rua</SelectItem>
-                          <SelectItem value="avenida">Avenida</SelectItem>
-                          <SelectItem value="travessa">Travessa</SelectItem>
-                          <SelectItem value="alameda">Alameda</SelectItem>
-                          <SelectItem value="praca">Praça</SelectItem>
-                          <SelectItem value="estrada">Estrada</SelectItem>
-                          <SelectItem value="rodovia">Rodovia</SelectItem>
-                          <SelectItem value="outro">Outro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Número e complemento */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="addressNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Número</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="123" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="addressComplement"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Complemento</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Apto 45, Bloco B" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Bairro */}
+        {form.watch("birthCountry") && form.watch("birthCountry") !== "BR" && (
+          <div className="rounded-lg bg-blue-50 p-4">
+            <h4 className="mb-2 font-medium text-blue-900">
+              Documentos para Estrangeiros
+            </h4>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <FormField
                 control={form.control}
-                name="addressNeighborhood"
+                name="passportNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Bairro</FormLabel>
+                    <FormLabel>Número do Passaporte</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} placeholder="Ex: AB1234567" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* Cidade e Estado */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="state"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Estado</FormLabel>
-                      <Select
-                        onValueChange={(value) => {
-                          const currentCity = form.getValues("city");
-                          field.onChange(value);
+              <FormField
+                control={form.control}
+                name="passportCountry"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>País do Passaporte</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o país" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PAISES.map((pais) => (
+                          <SelectItem key={pais.value} value={pais.value}>
+                            {pais.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-                          // Só limpar a cidade se mudou o estado
-                          if (value !== field.value) {
-                            form.setValue("city", "");
-                          }
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="passportIssueDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data de Emissão</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="date" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                          buscarMunicipios(value).then(() => {
-                            // Se havia uma cidade selecionada e o estado não mudou, manter
-                            if (currentCity && value === field.value) {
-                              form.setValue("city", currentCity);
-                            }
-                          });
-                        }}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o estado" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {estados.map((estado) => (
-                            <SelectItem key={estado.value} value={estado.value}>
-                              {estado.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <FormField
+                control={form.control}
+                name="passportExpiryDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data de Validade</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="date" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 
-                <FormField
-                  control={form.control}
-                  name="city"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Município</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o município" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {municipios.map((municipio) => (
-                            <SelectItem
-                              key={municipio.id}
-                              value={municipio.nome}
-                            >
-                              {municipio.nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        );
-
-      case "contacts":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <StepIcon className="h-5 w-5" />
-                {currentStepData.title}
-              </CardTitle>
-              <p className="text-sm text-gray-600">
-                {currentStepData.description}
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Contato de emergência */}
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-900">
-                  Contato de Emergência
-                </h4>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="emergencyContact"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome do Contato</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="emergencyPhone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Telefone do Contato</FormLabel>
-                        <FormControl>
-                          <PatternFormat
-                            format="(##) #####-####"
-                            mask="_"
-                            customInput={Input}
-                            placeholder="(11) 99999-9999"
-                            value={field.value}
-                            onValueChange={(values) => {
-                              // Só salvar se o telefone estiver completo (11 dígitos) ou vazio
-                              if (
-                                values.value.length === 11 ||
-                                values.value.length === 0
-                              ) {
-                                field.onChange(values.formattedValue);
-                              } else if (values.value.length > 0) {
-                                // Se tiver dígitos mas não estiver completo, não salvar
-                                field.onChange("");
-                              }
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              {/* Guardião/Representante Legal (para menores de 16 anos) */}
-              {precisaGuardiao && (
-                <div className="space-y-4">
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium text-gray-900">
-                      Guardião/Representante Legal
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      Obrigatório para menores de 16 anos (idade atual: {idade}{" "}
-                      anos)
-                    </p>
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="guardianName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Nome do Guardião/Representante Legal *
-                        </FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="guardianRelationship"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            Grau de Parentesco/Relacionamento *
-                          </FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o parentesco" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {GRAUS_PARENTESCO.map((grau) => (
-                                <SelectItem key={grau.value} value={grau.value}>
-                                  {grau.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+  // Renderizar etapa de Documentos
+  const renderDocumentsStep = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <IdCard className="h-5 w-5 text-orange-600" />
+          Documentos
+        </CardTitle>
+        <p className="text-sm text-gray-600">
+          Informações sobre documentos pessoais
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="rounded-lg bg-green-50 p-4">
+          <h4 className="mb-2 font-medium text-green-900">
+            Documentos Brasileiros
+          </h4>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="cpf"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>CPF</FormLabel>
+                  <FormControl>
+                    <PatternFormat
+                      format="###.###.###-##"
+                      mask="_"
+                      customInput={Input}
+                      placeholder="000.000.000-00"
+                      value={field.value}
+                      onValueChange={(values) => {
+                        field.onChange(values.formattedValue);
+                      }}
                     />
-
-                    <FormField
-                      control={form.control}
-                      name="guardianCpf"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>CPF do Guardião *</FormLabel>
-                          <FormControl>
-                            <PatternFormat
-                              format="###.###.###-##"
-                              mask="_"
-                              customInput={Input}
-                              placeholder="123.456.789-00"
-                              value={field.value}
-                              onValueChange={(values) => {
-                                // Só salvar se o CPF estiver completo (11 dígitos) ou vazio
-                                if (
-                                  values.value.length === 11 ||
-                                  values.value.length === 0
-                                ) {
-                                  field.onChange(values.formattedValue);
-                                } else if (values.value.length > 0) {
-                                  // Se tiver dígitos mas não estiver completo, não salvar
-                                  field.onChange("");
-                                }
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </CardContent>
-          </Card>
-        );
+            />
 
+            <FormField
+              control={form.control}
+              name="cnsNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>CNS (Cartão Nacional de Saúde)</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="123 4567 8901 2345" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <FormField
+              control={form.control}
+              name="rgNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>RG</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="12.345.678-9" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="rgComplement"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Complemento RG</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="X" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="rgState"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>UF do RG</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="SP" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="rgIssuer"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Órgão Emissor</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="SSP" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="rgIssueDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Data de Emissão</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="date" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Renderizar etapa de Endereço
+  const renderAddressStep = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MapPin className="h-5 w-5 text-purple-600" />
+          Endereço
+        </CardTitle>
+        <p className="text-sm text-gray-600">
+          Informações de endereço completo
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <FormField
+          control={form.control}
+          name="zipCode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>CEP</FormLabel>
+              <FormControl>
+                <PatternFormat
+                  format="#####-###"
+                  mask="_"
+                  customInput={Input}
+                  placeholder="00000-000"
+                  value={field.value}
+                  onValueChange={(values) => {
+                    field.onChange(values.formattedValue);
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="addressType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tipo de Logradouro</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="rua">Rua</SelectItem>
+                    <SelectItem value="avenida">Avenida</SelectItem>
+                    <SelectItem value="travessa">Travessa</SelectItem>
+                    <SelectItem value="alameda">Alameda</SelectItem>
+                    <SelectItem value="praca">Praça</SelectItem>
+                    <SelectItem value="estrada">Estrada</SelectItem>
+                    <SelectItem value="rodovia">Rodovia</SelectItem>
+                    <SelectItem value="outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="addressName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nome do Logradouro</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="Ex: das Flores" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <FormField
+            control={form.control}
+            name="addressNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Número</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="123" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="addressComplement"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Complemento</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="Apto 45" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="addressNeighborhood"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Bairro</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="Centro" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <FormField
+            control={form.control}
+            name="city"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Cidade</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="São Paulo" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="state"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Estado</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o estado" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {ESTADOS_BRASILEIROS.map((estado) => (
+                      <SelectItem key={estado.value} value={estado.value}>
+                        {estado.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="country"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>País</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o país" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {PAISES.map((pais) => (
+                      <SelectItem key={pais.value} value={pais.value}>
+                        {pais.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Renderizar etapa de Contatos
+  const renderContactsStep = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Phone className="h-5 w-5 text-red-600" />
+          Contatos
+        </CardTitle>
+        <p className="text-sm text-gray-600">
+          Informações de contato e emergência
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="rounded-lg bg-red-50 p-4">
+          <h4 className="mb-2 font-medium text-red-900">
+            Contato de Emergência
+          </h4>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="emergencyContact"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome do Contato</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Nome completo" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="emergencyPhone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefone de Emergência</FormLabel>
+                  <FormControl>
+                    <PatternFormat
+                      format="(##) #####-####"
+                      mask="_"
+                      customInput={Input}
+                      placeholder="(11) 99999-9999"
+                      value={field.value}
+                      onValueChange={(values) => {
+                        field.onChange(values.formattedValue);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-lg bg-yellow-50 p-4">
+          <h4 className="mb-2 font-medium text-yellow-900">
+            Guardião/Representante Legal
+          </h4>
+          <p className="mb-4 text-sm text-yellow-700">
+            Obrigatório para menores de 16 anos
+          </p>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="guardianName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome do Guardião</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Nome completo" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="guardianRelationship"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Parentesco</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o parentesco" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="pai">Pai</SelectItem>
+                      <SelectItem value="mae">Mãe</SelectItem>
+                      <SelectItem value="avo">Avô</SelectItem>
+                      <SelectItem value="avo_feminino">Avó</SelectItem>
+                      <SelectItem value="tio">Tio</SelectItem>
+                      <SelectItem value="tia">Tia</SelectItem>
+                      <SelectItem value="irmao">Irmão</SelectItem>
+                      <SelectItem value="irma">Irmã</SelectItem>
+                      <SelectItem value="tutor">Tutor</SelectItem>
+                      <SelectItem value="curador">Curador</SelectItem>
+                      <SelectItem value="responsavel_legal">
+                        Responsável Legal
+                      </SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="guardianCpf"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>CPF do Guardião</FormLabel>
+                <FormControl>
+                  <PatternFormat
+                    format="###.###.###-##"
+                    mask="_"
+                    customInput={Input}
+                    placeholder="000.000.000-00"
+                    value={field.value}
+                    onValueChange={(values) => {
+                      field.onChange(values.formattedValue);
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Render da etapa atual
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 0:
+        return renderBasicStep();
+      case 1:
+        return renderNationalityStep();
+      case 2:
+        return renderDocumentsStep();
+      case 3:
+        return renderAddressStep();
+      case 4:
+        return renderContactsStep();
       default:
-        return null;
+        return renderBasicStep();
     }
   };
 
+  // RENDERIZAÇÃO PRINCIPAL
+  if (!isEditMode) {
+    // MODO VISUALIZAÇÃO
+    return (
+      <div className="space-y-6">
+        <ViewModeHeader />
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <BasicDataBlock />
+          <NationalityBlock />
+          <DocumentsBlock />
+          <AddressBlock />
+          <div className="lg:col-span-2">
+            <ContactsBlock />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // MODO EDIÇÃO (WIZARD)
   return (
     <Form {...form}>
-      <GlobalSaveIndicator />
+      <div className="space-y-6">
+        <EditModeHeader />
 
-      <div className="mx-auto max-w-4xl space-y-6">
-        <ProgressIndicator />
+        <div className="mx-auto max-w-4xl space-y-6">
+          <ProgressIndicator />
+          {renderCurrentStep()}
 
-        {renderStep()}
+          {/* Botões de navegação */}
+          <div className="flex items-center justify-between pt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={prevStep}
+              disabled={currentStep === 0}
+              className="flex items-center gap-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Anterior
+            </Button>
 
-        {/* Botões de navegação */}
-        <div className="flex items-center justify-between pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={prevStep}
-            disabled={currentStep === 0}
-            className="flex items-center gap-2"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Anterior
-          </Button>
+            <div className="flex items-center gap-2">
+              {isSaving && (
+                <Badge variant="outline" className="text-blue-600">
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  Salvando...
+                </Badge>
+              )}
+            </div>
 
-          <div className="flex items-center gap-2">
-            {hasUnsavedChanges && !isSaving && (
-              <Badge variant="outline" className="text-orange-600">
-                <AlertCircle className="mr-1 h-3 w-3" />
-                Salvando automaticamente...
-              </Badge>
-            )}
-            {isSaving && currentStep === WIZARD_STEPS.length - 1 && (
-              <Badge variant="outline" className="text-blue-600">
-                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                Finalizando...
-              </Badge>
-            )}
+            <Button
+              type="button"
+              onClick={() => {
+                if (currentStep === WIZARD_STEPS.length - 1) {
+                  handleFinish();
+                } else {
+                  nextStep();
+                }
+              }}
+              disabled={isSaving || isExecuting}
+              className="flex items-center gap-2"
+            >
+              {currentStep === WIZARD_STEPS.length - 1 ? (
+                <>
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4" />
+                  )}
+                  {isSaving || isExecuting ? "Finalizando..." : "Finalizar"}
+                </>
+              ) : (
+                <>
+                  Próximo
+                  <ChevronRight className="h-4 w-4" />
+                </>
+              )}
+            </Button>
           </div>
-
-          <Button
-            type="button"
-            onClick={() => {
-              if (currentStep === WIZARD_STEPS.length - 1) {
-                handleFinish();
-              } else if (validateCurrentStep()) {
-                nextStep();
-              }
-            }}
-            disabled={currentStep === WIZARD_STEPS.length - 1 && isSaving}
-            className="flex items-center gap-2"
-          >
-            {currentStep === WIZARD_STEPS.length - 1 ? (
-              <>
-                {isSaving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle className="h-4 w-4" />
-                )}
-                {isSaving ? "Finalizando..." : "Finalizar"}
-              </>
-            ) : (
-              <>
-                Próximo
-                <ChevronRight className="h-4 w-4" />
-              </>
-            )}
-          </Button>
         </div>
       </div>
     </Form>
