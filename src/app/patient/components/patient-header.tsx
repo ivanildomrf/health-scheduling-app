@@ -51,14 +51,17 @@ export function PatientHeader({ session }: PatientHeaderProps) {
             />
           </Link>
           <div className="text-sm font-bold text-gray-700">
-            Portal do Paciente - {session.patient.clinic.name}
+            Portal do Paciente
+            {session.patient?.clinic?.name
+              ? ` - ${session.patient.clinic.name}`
+              : ""}
           </div>
         </div>
 
         {/* User Menu */}
         <div className="flex items-center space-x-4">
           <span className="text-sm font-bold text-gray-700">
-            Olá, {session.patient.name.split(" ")[0]}
+            Olá, {session.patient?.name?.split(" ")[0] || "Usuário"}
           </span>
 
           <DropdownMenu>
@@ -66,12 +69,14 @@ export function PatientHeader({ session }: PatientHeaderProps) {
               <Button variant="ghost" className="h-10 w-10 rounded-full p-0">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-blue-100 text-blue-600">
-                    {session.patient.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()
-                      .slice(0, 2)}
+                    {session.patient?.name
+                      ? session.patient.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2)
+                      : "U"}
                   </AvatarFallback>
                 </Avatar>
               </Button>

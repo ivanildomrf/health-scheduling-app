@@ -54,4 +54,3 @@ export const createNotification = actionClient
       throw new Error("Erro interno do servidor");
     }
   });
-  actionClient

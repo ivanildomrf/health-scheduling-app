@@ -58,7 +58,6 @@ export function NotificationCenter({
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    totalCount,
   } = useNotifications({ userId, refreshInterval: 20000 });
 
   // Filtrar notificações
@@ -169,7 +168,9 @@ export function NotificationCenter({
           {/* Filtro por tipo */}
           <Select
             value={typeFilter}
-            onValueChange={(value) => setTypeFilter(value as any)}
+            onValueChange={(value) =>
+              setTypeFilter(value as NotificationType | "all")
+            }
           >
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Filtrar por tipo" />
@@ -210,7 +211,9 @@ export function NotificationCenter({
       <CardContent className="p-0">
         <Tabs
           value={activeTab}
-          onValueChange={(value) => setActiveTab(value as any)}
+          onValueChange={(value) =>
+            setActiveTab(value as "all" | "unread" | "read")
+          }
         >
           <div className="border-b px-6">
             <TabsList className="grid w-full grid-cols-3">
@@ -275,7 +278,7 @@ export function NotificationCenter({
 }
 
 interface NotificationListProps {
-  notifications: any[];
+  notifications: any[]; // Temporariamente any para evitar conflito com tipo nativo Notification
   onMarkAsRead: (id: string) => void;
   onDelete: (id: string) => void;
   isLoading: boolean;

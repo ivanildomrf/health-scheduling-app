@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Mail,
+  MessageCircle,
   Stethoscope,
   UserRound,
 } from "lucide-react";
@@ -58,6 +59,11 @@ const mainMenuItems = [
     title: "Pacientes",
     url: "/patients",
     icon: UserRound,
+  },
+  {
+    title: "Chat",
+    url: "/chat",
+    icon: MessageCircle,
   },
   {
     title: "Clínicas",

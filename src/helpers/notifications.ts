@@ -49,7 +49,7 @@ export async function createNotificationForUser(
       .returning();
 
     return notification;
-  } catch (error) {
+  } catch {
     // Falhar silenciosamente para não quebrar o fluxo principal
   }
 }

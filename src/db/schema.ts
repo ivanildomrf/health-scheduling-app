@@ -636,3 +636,169 @@ export const patientSessionsTableRelations = relations(
     }),
   }),
 );
+
+// ========================= SISTEMA DE CHAT =========================
+
+// Enum para status da conversa
+export const chatConversationStatusEnum = pgEnum("chat_conversation_status", [
+  "active",
+  "resolved",
+  "archived",
+]);
+
+// Enum para tipo de participante
+export const chatParticipantTypeEnum = pgEnum("chat_participant_type", [
+  "patient",
+  "receptionist",
+  "admin",
+]);
+
+// Tabela de conversas de chat
+export const chatConversationsTable = pgTable("chat_conversations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clinicId: uuid("clinic_id")
+    .notNull()
+    .references(() => clinicsTable.id, { onDelete: "cascade" }),
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => patientsTable.id, { onDelete: "cascade" }),
+  subject: text("subject").notNull(), // Assunto da conversa
+  status: chatConversationStatusEnum("status").default("active").notNull(),
+  priority: integer("priority").default(1).notNull(), // 1=baixa, 2=média, 3=alta
+  assignedUserId: text("assigned_user_id").references(() => usersTable.id), // Recepcionista responsável
+  lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: text("resolved_by").references(() => usersTable.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+// Tabela de mensagens do chat
+export const chatMessagesTable = pgTable("chat_messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  conversationId: uuid("conversation_id")
+    .notNull()
+    .references(() => chatConversationsTable.id, { onDelete: "cascade" }),
+
+  // Dados do remetente
+  senderType: chatParticipantTypeEnum("sender_type").notNull(),
+  senderPatientId: uuid("sender_patient_id").references(() => patientsTable.id),
+  senderUserId: text("sender_user_id").references(() => usersTable.id),
+  senderName: text("sender_name").notNull(), // Nome para exibição
+
+  // Conteúdo da mensagem
+  content: text("content").notNull(),
+  messageType: text("message_type").default("text").notNull(), // text, image, file, system
+  attachmentUrl: text("attachment_url"), // URL do anexo se houver
+  attachmentName: text("attachment_name"), // Nome original do arquivo
+  attachmentSize: integer("attachment_size"), // Tamanho em bytes
+  attachmentMimeType: text("attachment_mime_type"), // Tipo MIME
+
+  // Controle de leitura
+  isRead: boolean("is_read").default(false).notNull(),
+  readAt: timestamp("read_at"),
+  readBy: text("read_by").references(() => usersTable.id),
+
+  // Controle de sistema
+  isSystemMessage: boolean("is_system_message").default(false).notNull(),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+// Tabela para marcar mensagens não lidas por usuário
+export const chatUnreadMessagesTable = pgTable("chat_unread_messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  conversationId: uuid("conversation_id")
+    .notNull()
+    .references(() => chatConversationsTable.id, { onDelete: "cascade" }),
+
+  // Quem tem mensagens não lidas
+  userType: chatParticipantTypeEnum("user_type").notNull(),
+  userId: text("user_id").references(() => usersTable.id), // Para recepcionistas
+  patientId: uuid("patient_id").references(() => patientsTable.id), // Para pacientes
+
+  unreadCount: integer("unread_count").default(0).notNull(),
+  lastReadMessageId: uuid("last_read_message_id").references(
+    () => chatMessagesTable.id,
+  ),
+  lastReadAt: timestamp("last_read_at").defaultNow().notNull(),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+// Relations para chat
+export const chatConversationsTableRelations = relations(
+  chatConversationsTable,
+  ({ one, many }) => ({
+    clinic: one(clinicsTable, {
+      fields: [chatConversationsTable.clinicId],
+      references: [clinicsTable.id],
+    }),
+    patient: one(patientsTable, {
+      fields: [chatConversationsTable.patientId],
+      references: [patientsTable.id],
+    }),
+    assignedUser: one(usersTable, {
+      fields: [chatConversationsTable.assignedUserId],
+      references: [usersTable.id],
+    }),
+    resolvedByUser: one(usersTable, {
+      fields: [chatConversationsTable.resolvedBy],
+      references: [usersTable.id],
+    }),
+    messages: many(chatMessagesTable),
+    unreadMessages: many(chatUnreadMessagesTable),
+  }),
+);
+
+export const chatMessagesTableRelations = relations(
+  chatMessagesTable,
+  ({ one }) => ({
+    conversation: one(chatConversationsTable, {
+      fields: [chatMessagesTable.conversationId],
+      references: [chatConversationsTable.id],
+    }),
+    senderPatient: one(patientsTable, {
+      fields: [chatMessagesTable.senderPatientId],
+      references: [patientsTable.id],
+    }),
+    senderUser: one(usersTable, {
+      fields: [chatMessagesTable.senderUserId],
+      references: [usersTable.id],
+    }),
+    readByUser: one(usersTable, {
+      fields: [chatMessagesTable.readBy],
+      references: [usersTable.id],
+    }),
+  }),
+);
+
+export const chatUnreadMessagesTableRelations = relations(
+  chatUnreadMessagesTable,
+  ({ one }) => ({
+    conversation: one(chatConversationsTable, {
+      fields: [chatUnreadMessagesTable.conversationId],
+      references: [chatConversationsTable.id],
+    }),
+    user: one(usersTable, {
+      fields: [chatUnreadMessagesTable.userId],
+      references: [usersTable.id],
+    }),
+    patient: one(patientsTable, {
+      fields: [chatUnreadMessagesTable.patientId],
+      references: [patientsTable.id],
+    }),
+    lastReadMessage: one(chatMessagesTable, {
+      fields: [chatUnreadMessagesTable.lastReadMessageId],
+      references: [chatMessagesTable.id],
+    }),
+  }),
+);

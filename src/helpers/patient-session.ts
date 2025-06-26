@@ -13,7 +13,7 @@ export async function getPatientSession(): Promise<PatientSession | null> {
 
     const session = await patientAuth.getSession(token);
     return session;
-  } catch (error) {
+  } catch {
     return null;
   }
 }

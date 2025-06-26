@@ -33,7 +33,7 @@ export function useNotifications({
           setNotifications(data.data);
         }
       },
-      onError: ({ error }) => {
+      onError: () => {
         toast.error("Erro ao carregar notificações");
       },
     });
@@ -46,7 +46,7 @@ export function useNotifications({
           setUnreadCount(data.data.count);
         }
       },
-      onError: ({ error }) => {
+      onError: () => {
         toast.error("Erro ao carregar contador de notificações");
       },
     },
@@ -66,7 +66,7 @@ export function useNotifications({
           toast.success("Notificação marcada como lida");
         }
       },
-      onError: ({ error }) => {
+      onError: () => {
         toast.error("Erro ao marcar notificação como lida");
       },
     },
@@ -84,7 +84,7 @@ export function useNotifications({
           toast.success(`${data.data.count} notificações marcadas como lidas`);
         }
       },
-      onError: ({ error }) => {
+      onError: () => {
         toast.error("Erro ao marcar todas as notificações como lidas");
       },
     },
@@ -104,7 +104,7 @@ export function useNotifications({
           toast.success("Notificação removida");
         }
       },
-      onError: ({ error }) => {
+      onError: () => {
         toast.error("Erro ao remover notificação");
       },
     },

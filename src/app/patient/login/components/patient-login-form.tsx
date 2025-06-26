@@ -40,7 +40,7 @@ export function PatientLoginForm() {
         toast.error(result.data.error);
       }
     },
-    onError: (error) => {
+    onError: () => {
       toast.error("Erro ao fazer login. Verifique suas credenciais.");
     },
   });

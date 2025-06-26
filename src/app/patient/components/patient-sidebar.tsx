@@ -1,6 +1,13 @@
 "use client";
 
-import { BarChart3, Calendar, FileText, Settings, User } from "lucide-react";
+import {
+  BarChart3,
+  Calendar,
+  FileText,
+  MessageCircle,
+  Settings,
+  User,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -14,6 +21,11 @@ const menuItems = [
     label: "Agendamentos",
     href: "/patient/appointments",
     icon: <Calendar className="h-4 w-4" />,
+  },
+  {
+    label: "Chat",
+    href: "/patient/chat",
+    icon: <MessageCircle className="h-4 w-4" />,
   },
   {
     label: "Histórico Médico",

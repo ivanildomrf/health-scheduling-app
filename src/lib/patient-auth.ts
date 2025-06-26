@@ -91,7 +91,7 @@ export class PatientAuth {
           },
         },
       };
-    } catch (error) {
+    } catch {
       throw new Error("Credenciais inválidas");
     }
   }
@@ -140,7 +140,7 @@ export class PatientAuth {
           },
         },
       };
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -150,7 +150,7 @@ export class PatientAuth {
       await db
         .delete(schema.patientSessionsTable)
         .where(eq(schema.patientSessionsTable.token, token));
-    } catch (error) {
+    } catch {
       // Ignorar erro ao deletar sessão
     }
   }
@@ -246,7 +246,7 @@ export class PatientAuth {
         .update(schema.patientsTable)
         .set({ password: newPasswordHash })
         .where(eq(schema.patientsTable.id, session.patient.id));
-    } catch (error) {
+    } catch {
       throw new Error("Erro ao alterar senha");
     }
   }
