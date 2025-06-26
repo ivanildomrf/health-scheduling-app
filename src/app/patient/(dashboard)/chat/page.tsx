@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { chatConversationsTable } from "@/db/schema";
@@ -36,16 +36,19 @@ export default async function PatientChatPage() {
   };
 
   try {
-    // Buscar conversas reais do banco de dados
+    // Buscar apenas conversas ATIVAS do banco de dados
     const conversations = await db
       .select()
       .from(chatConversationsTable)
-      .where(eq(chatConversationsTable.patientId, mockSession.patientId))
+      .where(
+        and(
+          eq(chatConversationsTable.patientId, mockSession.patientId),
+          eq(chatConversationsTable.status, "active") // Filtrar apenas conversas ativas
+        )
+      )
       .orderBy(desc(chatConversationsTable.lastMessageAt));
 
-    console.log(
-      `📋 Conversas carregadas para paciente: ${conversations.length}`,
-    );
+    console.log(`📋 Conversas ativas carregadas para paciente: ${conversations.length}`);
 
     return (
       <div className="space-y-6">
@@ -62,7 +65,7 @@ export default async function PatientChatPage() {
         <div className="rounded-lg border border-gray-200 bg-white">
           <div className="border-b border-gray-200 p-4">
             <h2 className="text-lg font-semibold text-gray-900">
-              Suas Conversas ({conversations.length})
+              Suas Conversas Ativas ({conversations.length})
             </h2>
           </div>
 

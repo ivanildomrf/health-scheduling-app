@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -33,7 +33,7 @@ export default async function ClinicChatPage() {
     redirect("/clinic-form");
   }
 
-  // Buscar conversas da clínica com dados dos pacientes (simplificado)
+  // Buscar apenas conversas ATIVAS da clínica com dados dos pacientes
   let conversations: Array<{
     id: string;
     subject: string;
@@ -69,7 +69,12 @@ export default async function ClinicChatPage() {
         patientsTable,
         eq(chatConversationsTable.patientId, patientsTable.id),
       )
-      .where(eq(chatConversationsTable.clinicId, userClinic.clinicId))
+      .where(
+        and(
+          eq(chatConversationsTable.clinicId, userClinic.clinicId),
+          eq(chatConversationsTable.status, "active"), // Filtrar apenas conversas ativas
+        ),
+      )
       .orderBy(desc(chatConversationsTable.lastMessageAt));
 
     // Adicionar unreadCount temporariamente (depois será feito via JOIN com tabela chat_unread_messages)
@@ -87,6 +92,10 @@ export default async function ClinicChatPage() {
             unreadCount: 0, // Temporário
           }))
       : [];
+
+    console.log(
+      `📋 Conversas ativas carregadas para clínica: ${conversations.length}`,
+    );
   } catch (error) {
     console.error("Error fetching clinic conversations:", error);
     conversations = [];
@@ -111,7 +120,7 @@ export default async function ClinicChatPage() {
         <div className="rounded-lg border border-gray-200 bg-white">
           <div className="border-b border-gray-200 p-4">
             <h2 className="text-lg font-semibold text-gray-900">
-              Conversas Ativas
+              Conversas Ativas ({conversations.length})
             </h2>
           </div>
 

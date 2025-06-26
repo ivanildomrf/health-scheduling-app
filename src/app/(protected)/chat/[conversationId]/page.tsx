@@ -110,7 +110,6 @@ export default async function ClinicChatConversationPage({
         <div className="rounded-lg border border-gray-200 bg-white">
           <ClinicChatWindow
             conversation={conversation}
-            userId={session.user.id}
             userName={session.user.name || "Recepcionista"}
           />
         </div>

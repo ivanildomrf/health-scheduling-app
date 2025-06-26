@@ -1,19 +1,21 @@
 "use client";
 
-import { format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ArrowLeft, Clock, Send } from "lucide-react";
-import { useAction } from "next-safe-action/hooks";
-import Link from "next/link";
+import { Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ArrowLeft, Clock } from "lucide-react";
+import { useAction } from "next-safe-action/hooks";
+import Link from "next/link";
 
 import { getChatMessages } from "@/actions/get-chat-messages";
 import { sendChatMessage } from "@/actions/send-chat-message";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Message {
   id: string;
@@ -261,7 +263,7 @@ export function ChatWindow({
                   }`}
                 >
                   <Clock className="h-3 w-3" />
-                  {format(new Date(message.createdAt), "HH:mm", {
+                  {formatDistanceToNow(new Date(message.createdAt), {
                     locale: ptBR,
                   })}
                 </div>

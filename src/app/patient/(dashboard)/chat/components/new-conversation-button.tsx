@@ -1,8 +1,8 @@
 "use client";
 
-import { MessageCirclePlus } from "lucide-react";
-import { useAction } from "next-safe-action/hooks";
+import { MessageCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAction } from "next-safe-action/hooks";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -82,7 +82,7 @@ export function NewConversationButton({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <MessageCirclePlus className="mr-2 h-4 w-4" />
+          <MessageCircle className="mr-2 h-4 w-4" />
           Nova Conversa
         </Button>
       </DialogTrigger>
