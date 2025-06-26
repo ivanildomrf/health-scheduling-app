@@ -2,8 +2,9 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Send } from "lucide-react";
+import { ArrowLeft, Send } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -123,6 +124,12 @@ export function ClinicChatWindow({
       {/* Header da conversa */}
       <div className="border-b border-gray-200 p-4">
         <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" asChild className="shrink-0">
+            <Link href="/chat">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+
           <Avatar className="h-10 w-10">
             <AvatarFallback className="bg-blue-100 text-blue-700">
               {conversation.patientName.charAt(0).toUpperCase()}
