@@ -36,16 +36,13 @@ export function ClinicChatList({
   conversations,
   currentUserId,
 }: ClinicChatListProps) {
-  // Verificar se conversations é um array válido
+  // Validar prop de conversas
   if (!Array.isArray(conversations)) {
-    console.error("Conversations prop is not an array:", conversations);
     return (
-      <div className="p-8 text-center">
-        <MessageCircle className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-4 text-lg font-medium text-gray-900">
-          Erro ao carregar conversas
-        </h3>
-        <p className="mt-2 text-gray-600">Tente recarregar a página.</p>
+      <div className="flex h-full items-center justify-center">
+        <p className="text-muted-foreground">
+          Erro ao carregar conversas. Tente novamente.
+        </p>
       </div>
     );
   }

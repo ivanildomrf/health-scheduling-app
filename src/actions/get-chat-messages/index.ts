@@ -13,9 +13,6 @@ export const getChatMessages = actionClient
   .action(async ({ parsedInput }) => {
     const { conversationId, limit = 50 } = parsedInput;
 
-    console.log("=== getChatMessages Action START ===");
-    console.log("parsedInput:", parsedInput);
-
     try {
       // Buscar mensagens da conversa
       const messages = await db
@@ -28,6 +25,10 @@ export const getChatMessages = actionClient
           attachmentUrl: chatMessagesTable.attachmentUrl,
           attachmentName: chatMessagesTable.attachmentName,
           isSystemMessage: chatMessagesTable.isSystemMessage,
+          // Campos de leitura
+          isRead: chatMessagesTable.isRead,
+          readAt: chatMessagesTable.readAt,
+          readBy: chatMessagesTable.readBy,
           createdAt: chatMessagesTable.createdAt,
         })
         .from(chatMessagesTable)
@@ -35,14 +36,11 @@ export const getChatMessages = actionClient
         .orderBy(asc(chatMessagesTable.createdAt))
         .limit(limit);
 
-      console.log("Messages found:", messages.length);
-
       return {
         success: true,
         data: messages,
       };
     } catch (error) {
-      console.error("Erro ao buscar mensagens:", error);
       throw new Error("Falha ao buscar mensagens");
     }
   });

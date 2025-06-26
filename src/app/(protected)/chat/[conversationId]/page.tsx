@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
@@ -6,12 +6,16 @@ import { PageContainer } from "@/components/ui/page-container";
 import { db } from "@/db";
 import {
   chatConversationsTable,
+  chatMessagesTable,
   patientsTable,
   usersToClinicsTable,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 import { ClinicChatWindow } from "./components/clinic-chat-window";
+
+// Desabilitar cache para sempre buscar dados frescos
+export const dynamic = "force-dynamic";
 
 interface ClinicChatConversationPageProps {
   params: Promise<{
@@ -26,7 +30,7 @@ export default async function ClinicChatConversationPage({
     headers: await headers(),
   });
 
-  if (!session) {
+  if (!session?.user?.id) {
     redirect("/authentication");
   }
 
@@ -81,6 +85,28 @@ export default async function ClinicChatConversationPage({
     }
   }
 
+  // Buscar mensagens da conversa
+  const messages = await db
+    .select({
+      id: chatMessagesTable.id,
+      content: chatMessagesTable.content,
+      senderType: chatMessagesTable.senderType,
+      senderName: chatMessagesTable.senderName,
+      messageType: chatMessagesTable.messageType,
+      attachmentUrl: chatMessagesTable.attachmentUrl,
+      attachmentName: chatMessagesTable.attachmentName,
+      isSystemMessage: chatMessagesTable.isSystemMessage,
+      // Campos de leitura
+      isRead: chatMessagesTable.isRead,
+      readAt: chatMessagesTable.readAt,
+      readBy: chatMessagesTable.readBy,
+      createdAt: chatMessagesTable.createdAt,
+    })
+    .from(chatMessagesTable)
+    .where(eq(chatMessagesTable.conversationId, conversationId))
+    .orderBy(asc(chatMessagesTable.createdAt))
+    .limit(100);
+
   const conversation = {
     id: conversationData.id,
     subject: conversationData.subject,
@@ -110,6 +136,8 @@ export default async function ClinicChatConversationPage({
         <div className="rounded-lg border border-gray-200 bg-white">
           <ClinicChatWindow
             conversation={conversation}
+            messages={messages}
+            userId={session.user.id}
             userName={session.user.name || "Recepcionista"}
           />
         </div>

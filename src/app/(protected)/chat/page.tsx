@@ -49,6 +49,7 @@ export default async function ClinicChatPage() {
   }> = [];
 
   try {
+    // Buscar conversas ativas da clínica
     const conversationsData = await db
       .select({
         id: chatConversationsTable.id,
@@ -58,21 +59,20 @@ export default async function ClinicChatPage() {
         lastMessageAt: chatConversationsTable.lastMessageAt,
         createdAt: chatConversationsTable.createdAt,
         assignedUserId: chatConversationsTable.assignedUserId,
-
         // Dados do paciente
         patientId: patientsTable.id,
         patientName: patientsTable.name,
         patientEmail: patientsTable.email,
       })
       .from(chatConversationsTable)
-      .leftJoin(
+      .innerJoin(
         patientsTable,
         eq(chatConversationsTable.patientId, patientsTable.id),
       )
       .where(
         and(
           eq(chatConversationsTable.clinicId, userClinic.clinicId),
-          eq(chatConversationsTable.status, "active"), // Filtrar apenas conversas ativas
+          eq(chatConversationsTable.status, "active"),
         ),
       )
       .orderBy(desc(chatConversationsTable.lastMessageAt));
@@ -92,13 +92,8 @@ export default async function ClinicChatPage() {
             unreadCount: 0, // Temporário
           }))
       : [];
-
-    console.log(
-      `📋 Conversas ativas carregadas para clínica: ${conversations.length}`,
-    );
   } catch (error) {
-    console.error("Error fetching clinic conversations:", error);
-    conversations = [];
+    throw new Error("Falha ao carregar conversas");
   }
 
   return (

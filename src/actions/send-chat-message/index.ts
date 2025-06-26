@@ -22,14 +22,17 @@ export const sendChatMessage = actionClient
       senderPatientId,
       senderUserId,
       senderName,
+      messageType = "text",
+      attachmentUrl = null,
+      attachmentName = null,
+      attachmentSize = null,
+      attachmentMimeType = null,
+      isSystemMessage = false,
     } = parsedInput;
-
-    console.log("=== sendChatMessage Action START ===");
-    console.log("parsedInput:", parsedInput);
 
     try {
       // Criar nova mensagem
-      const [newMessage] = await db
+      const newMessage = await db
         .insert(chatMessagesTable)
         .values({
           conversationId,
@@ -38,18 +41,20 @@ export const sendChatMessage = actionClient
           senderPatientId,
           senderUserId,
           senderName,
-          messageType: "text",
+          messageType,
+          attachmentUrl,
+          attachmentName,
+          attachmentSize,
+          attachmentMimeType,
+          isSystemMessage,
         })
         .returning();
 
-      console.log("Message created:", newMessage);
-
-      // Atualizar timestamp da última mensagem na conversa
+      // Atualizar última mensagem da conversa
       await db
         .update(chatConversationsTable)
         .set({
           lastMessageAt: new Date(),
-          updatedAt: new Date(),
         })
         .where(eq(chatConversationsTable.id, conversationId));
 
@@ -95,10 +100,9 @@ export const sendChatMessage = actionClient
 
       return {
         success: true,
-        data: newMessage,
+        data: newMessage[0],
       };
     } catch (error) {
-      console.error("Erro ao enviar mensagem:", error);
       throw new Error("Falha ao enviar mensagem");
     }
   });

@@ -2,20 +2,19 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Send } from "lucide-react";
+import { ArrowLeft, Check, Clock, Send } from "lucide-react";
+import { useAction } from "next-safe-action/hooks";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Clock } from "lucide-react";
-import { useAction } from "next-safe-action/hooks";
-import Link from "next/link";
-
 import { getChatMessages } from "@/actions/get-chat-messages";
+import { markChatMessagesRead } from "@/actions/mark-chat-messages-read";
 import { sendChatMessage } from "@/actions/send-chat-message";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Message {
   id: string;
@@ -26,6 +25,9 @@ interface Message {
   attachmentUrl: string | null;
   attachmentName: string | null;
   isSystemMessage: boolean;
+  isRead: boolean;
+  readAt: Date | null;
+  readBy: string | null;
   createdAt: Date;
 }
 
@@ -84,6 +86,36 @@ export function ChatWindow({
     },
   );
 
+  // Action para marcar mensagens como lidas
+  const { execute: executeMarkAsRead } = useAction(markChatMessagesRead, {
+    onSuccess: ({ data }) => {
+      console.log(
+        `📖 ${data?.data?.messagesRead || 0} mensagens marcadas como lidas`,
+      );
+      // Atualizar as mensagens localmente
+      if (data?.data?.updatedMessages) {
+        setMessages((prev) =>
+          prev.map((msg) => {
+            const updatedMsg = data.data.updatedMessages.find(
+              (updated) => updated.id === msg.id,
+            );
+            return updatedMsg
+              ? {
+                  ...msg,
+                  isRead: true,
+                  readAt: updatedMsg.readAt,
+                  readBy: updatedMsg.readBy,
+                }
+              : msg;
+          }),
+        );
+      }
+    },
+    onError: ({ error }) => {
+      console.error("Erro ao marcar mensagens como lidas:", error);
+    },
+  });
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -95,6 +127,39 @@ export function ChatWindow({
       limit: 100,
     });
   }, [conversation.id, fetchMessages]);
+
+  // Marcar mensagens como lidas quando a conversa é visualizada
+  useEffect(() => {
+    const markAsRead = () => {
+      executeMarkAsRead({
+        conversationId: conversation.id,
+        readerType: "patient",
+        readerId: patientId,
+        readerName: patientName,
+      });
+    };
+
+    // Marcar como lida imediatamente
+    markAsRead();
+
+    // Marcar como lida quando a página ganha foco
+    const handleFocus = () => {
+      markAsRead();
+      fetchMessages({
+        conversationId: conversation.id,
+        limit: 100,
+      });
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [
+    conversation.id,
+    patientId,
+    patientName,
+    executeMarkAsRead,
+    fetchMessages,
+  ]);
 
   // Atualizar mensagens quando as props iniciais mudam
   useEffect(() => {
@@ -111,19 +176,6 @@ export function ChatWindow({
     }, 5000); // Buscar a cada 5 segundos
 
     return () => clearInterval(interval);
-  }, [conversation.id, fetchMessages]);
-
-  // Buscar mensagens quando a página ganha foco
-  useEffect(() => {
-    const handleFocus = () => {
-      fetchMessages({
-        conversationId: conversation.id,
-        limit: 100,
-      });
-    };
-
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
   }, [conversation.id, fetchMessages]);
 
   useEffect(() => {
@@ -266,6 +318,25 @@ export function ChatWindow({
                   {formatDistanceToNow(new Date(message.createdAt), {
                     locale: ptBR,
                   })}
+
+                  {/* Indicador de leitura apenas para mensagens do paciente */}
+                  {message.senderType === "patient" && (
+                    <div
+                      className="ml-1 flex items-center"
+                      title={
+                        message.isRead ? "Mensagem lida" : "Mensagem enviada"
+                      }
+                    >
+                      {message.isRead ? (
+                        <div className="flex items-center gap-1">
+                          <Check className="h-3 w-3" />
+                          <Check className="-ml-1 h-3 w-3" />
+                        </div>
+                      ) : (
+                        <Check className="h-3 w-3" />
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

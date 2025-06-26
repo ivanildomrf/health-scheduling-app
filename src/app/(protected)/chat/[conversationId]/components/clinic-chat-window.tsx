@@ -2,12 +2,16 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Archive, ArrowLeft, Send } from "lucide-react";
+import { Archive, ArrowLeft, Check, Send } from "lucide-react";
+import { useAction } from "next-safe-action/hooks";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { getChatMessages } from "@/actions/get-chat-messages";
+import { markChatMessagesRead } from "@/actions/mark-chat-messages-read";
+import { sendChatMessage } from "@/actions/send-chat-message";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,77 +27,154 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { chatParticipantTypeEnum } from "@/db/schema";
 
-interface Message {
+interface ChatMessage {
   id: string;
   content: string;
-  senderType: "patient" | "receptionist" | "admin";
+  senderType: (typeof chatParticipantTypeEnum.enumValues)[number];
   senderName: string;
+  messageType: string;
+  attachmentUrl: string | null;
+  attachmentName: string | null;
+  isSystemMessage: boolean;
+  isRead: boolean;
+  readAt: Date | null;
+  readBy: string | null;
   createdAt: Date;
 }
 
-interface Conversation {
-  id: string;
-  subject: string;
-  status: "active" | "resolved" | "archived";
-  priority: number;
-  patientId: string;
-  patientName: string;
-  patientEmail: string;
-}
-
 interface ClinicChatWindowProps {
-  conversation: Conversation;
+  conversation: {
+    id: string;
+    subject: string;
+    status: string;
+    priority: number;
+    lastMessageAt: Date;
+    createdAt: Date;
+    patientId: string;
+    patientName: string;
+    patientEmail: string;
+  };
+  userId: string;
   userName: string;
 }
 
 export function ClinicChatWindow({
   conversation,
+  userId,
   userName,
 }: ClinicChatWindowProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const router = useRouter();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
+
+  // Action para buscar mensagens
+  const { execute: fetchMessages } = useAction(getChatMessages, {
+    onSuccess: ({ data }) => {
+      if (data?.data) {
+        setMessages(data.data);
+      }
+    },
+    onError: ({ error }) => {
+      toast.error("Erro ao carregar mensagens");
+    },
+  });
+
+  // Action para enviar mensagem
+  const { execute: executeSendMessage, isExecuting: isSendingMessage } =
+    useAction(sendChatMessage, {
+      onSuccess: ({ data }) => {
+        if (data?.data) {
+          // Adicionar a nova mensagem à lista
+          setMessages((prev) => [...prev, data.data]);
+          setNewMessage("");
+          scrollToBottom();
+        }
+      },
+      onError: ({ error }) => {
+        toast.error(error.serverError || "Erro ao enviar mensagem");
+      },
+    });
+
+  // Action para marcar mensagens como lidas
+  const { execute: executeMarkAsRead } = useAction(markChatMessagesRead, {
+    onSuccess: ({ data }) => {
+      // Atualizar as mensagens localmente
+      if (data?.data?.updatedMessages) {
+        setMessages((prev) =>
+          prev.map((msg) => {
+            const updatedMsg = data.data.updatedMessages.find(
+              (updated) => updated.id === msg.id,
+            );
+            return updatedMsg
+              ? {
+                  ...msg,
+                  isRead: true,
+                  readAt: updatedMsg.readAt,
+                  readBy: updatedMsg.readBy,
+                }
+              : msg;
+          }),
+        );
+      }
+    },
+    onError: () => {
+      toast.error("Erro ao marcar mensagens como lidas");
+    },
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const fetchMessages = useCallback(async () => {
-    setIsLoadingMessages(true);
-    try {
-      // Por enquanto, vamos usar dados mock para evitar problemas de build
-      const mockMessages: Message[] = [
-        {
-          id: "1",
-          content: "Olá, preciso agendar uma consulta.",
-          senderType: "patient",
-          senderName: conversation.patientName,
-          createdAt: new Date(Date.now() - 60000),
-        },
-        {
-          id: "2",
-          content: "Olá! Claro, vou te ajudar com o agendamento.",
-          senderType: "receptionist",
-          senderName: userName,
-          createdAt: new Date(),
-        },
-      ];
-      setMessages(mockMessages);
-    } catch (error) {
-      console.error("Erro ao carregar mensagens:", error);
-      toast.error("Erro ao carregar mensagens");
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  }, [conversation.patientName, userName]);
-
+  // Buscar mensagens ao montar o componente
   useEffect(() => {
-    fetchMessages();
+    fetchMessages({
+      conversationId: conversation.id,
+      limit: 100,
+    });
+  }, [conversation.id, fetchMessages]);
+
+  // Marcar mensagens como lidas quando a conversa é visualizada
+  useEffect(() => {
+    const markAsRead = () => {
+      executeMarkAsRead({
+        conversationId: conversation.id,
+        readerType: "receptionist",
+        readerId: userId,
+        readerName: userName,
+      });
+    };
+
+    // Marcar como lida imediatamente
+    markAsRead();
+
+    // Marcar como lida quando a página ganha foco
+    const handleFocus = () => {
+      markAsRead();
+      fetchMessages({
+        conversationId: conversation.id,
+        limit: 100,
+      });
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [conversation.id, userId, userName, executeMarkAsRead, fetchMessages]);
+
+  // Buscar mensagens periodicamente (polling)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchMessages({
+        conversationId: conversation.id,
+        limit: 100,
+      });
+    }, 5000); // Buscar a cada 5 segundos
+
+    return () => clearInterval(interval);
   }, [conversation.id, fetchMessages]);
 
   useEffect(() => {
@@ -107,27 +188,13 @@ export function ClinicChatWindow({
       return;
     }
 
-    setIsSendingMessage(true);
-    try {
-      // Por enquanto, vamos simular o envio
-      const newMsg: Message = {
-        id: Date.now().toString(),
-        content: newMessage.trim(),
-        senderType: "receptionist",
-        senderName: userName,
-        createdAt: new Date(),
-      };
-
-      setMessages((prev) => [...prev, newMsg]);
-      setNewMessage("");
-      scrollToBottom();
-      toast.success("Mensagem enviada!");
-    } catch (error) {
-      console.error("Erro ao enviar mensagem:", error);
-      toast.error("Erro ao enviar mensagem");
-    } finally {
-      setIsSendingMessage(false);
-    }
+    executeSendMessage({
+      conversationId: conversation.id,
+      content: newMessage.trim(),
+      senderType: "receptionist",
+      senderUserId: userId,
+      senderName: userName,
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -190,6 +257,7 @@ export function ClinicChatWindow({
                 {conversation.patientName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
+
             <div>
               <h3 className="font-semibold text-gray-900">
                 {conversation.patientName}
@@ -236,52 +304,60 @@ export function ClinicChatWindow({
 
       {/* Área das mensagens */}
       <ScrollArea className="flex-1 p-4">
-        {isLoadingMessages ? (
-          <div className="flex items-center justify-center py-8">
-            <p className="text-gray-500">Carregando mensagens...</p>
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="flex items-center justify-center py-8">
-            <p className="text-gray-500">Nenhuma mensagem ainda.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {messages.map((message) => (
+        <div className="space-y-4">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${
+                message.senderType === "patient"
+                  ? "justify-start"
+                  : "justify-end"
+              }`}
+            >
               <div
-                key={message.id}
-                className={`flex ${
+                className={`max-w-[70%] rounded-lg px-3 py-2 ${
                   message.senderType === "patient"
-                    ? "justify-start"
-                    : "justify-end"
+                    ? "bg-gray-100 text-gray-900"
+                    : "bg-blue-600 text-white"
                 }`}
               >
+                <div className="text-sm">{message.content}</div>
                 <div
-                  className={`max-w-[70%] rounded-lg px-3 py-2 ${
+                  className={`mt-1 text-xs ${
                     message.senderType === "patient"
-                      ? "bg-gray-100 text-gray-900"
-                      : "bg-blue-600 text-white"
+                      ? "text-gray-500"
+                      : "text-blue-100"
                   }`}
                 >
-                  <div className="text-sm">{message.content}</div>
-                  <div
-                    className={`mt-1 text-xs ${
-                      message.senderType === "patient"
-                        ? "text-gray-500"
-                        : "text-blue-100"
-                    }`}
-                  >
-                    {message.senderName} •{" "}
-                    {formatDistanceToNow(new Date(message.createdAt), {
-                      addSuffix: true,
-                      locale: ptBR,
-                    })}
-                  </div>
+                  {message.senderName} •{" "}
+                  {formatDistanceToNow(new Date(message.createdAt), {
+                    addSuffix: true,
+                    locale: ptBR,
+                  })}
+                  {/* Indicador de leitura apenas para mensagens da recepção */}
+                  {message.senderType !== "patient" && (
+                    <div
+                      className="ml-1 inline-flex items-center"
+                      title={
+                        message.isRead ? "Mensagem lida" : "Mensagem enviada"
+                      }
+                    >
+                      {message.isRead ? (
+                        <div className="flex items-center gap-1">
+                          <Check className="h-3 w-3" />
+                          <Check className="-ml-1 h-3 w-3" />
+                        </div>
+                      ) : (
+                        <Check className="h-3 w-3" />
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
       </ScrollArea>
 
       {/* Área de envio de mensagem */}
@@ -290,10 +366,10 @@ export function ClinicChatWindow({
           <Textarea
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
             placeholder="Digite sua mensagem..."
             className="min-h-[40px] resize-none"
             disabled={isSendingMessage}
+            onKeyDown={handleKeyDown}
           />
           <Button
             type="submit"
