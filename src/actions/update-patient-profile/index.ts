@@ -2,7 +2,6 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import Error from "next/error";
 import { z } from "zod";
 
 import { db } from "@/db";
