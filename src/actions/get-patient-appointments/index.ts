@@ -73,7 +73,7 @@ export const getPatientAppointments = actionClient
           hasMore: offset + limit < (totalCount[0]?.count || 0),
         },
       };
-    } catch (error) {
+    } catch {
       throw new Error("Erro ao buscar agendamentos do paciente");
     }
   });

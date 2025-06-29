@@ -13,7 +13,7 @@ export const archiveConversation = actionClient
       console.log("=== archiveConversation Action START ===");
       console.log("parsedInput:", parsedInput);
 
-      const { conversationId, reason, userId } = parsedInput;
+      const { conversationId, userId } = parsedInput;
 
       // Atualizar status da conversa para 'archived'
       const [updatedConversation] = await db

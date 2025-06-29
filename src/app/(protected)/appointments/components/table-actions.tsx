@@ -1,6 +1,6 @@
 import { Check, Clock, EditIcon, MoreVerticalIcon, XIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useAction } from "next-safe-action/hooks";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -21,28 +21,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DropdownMenu } from "@/components/ui/dropdown-menu";
-import { appointmentsTable } from "@/db/schema";
+import { type AppointmentWithRelations } from "@/db/types";
 
 import { useAppointmentsContext } from "./appointments-context";
 import UpsertAppointmentForm from "./upsert-appointment-form";
 
 interface AppointmentTableActionsProps {
-  appointment: typeof appointmentsTable.$inferSelect & {
-    patient: {
-      name: string;
-    };
-    professional: {
-      name: string;
-      speciality: string;
-    };
-  };
+  appointment: AppointmentWithRelations;
 }
 
 export const AppointmentTableActions = ({

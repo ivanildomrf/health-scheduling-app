@@ -22,7 +22,7 @@ export const patientLogout = actionClient
       }
 
       redirect("/patient/login");
-    } catch (error) {
+    } catch {
       redirect("/patient/login");
     }
   });

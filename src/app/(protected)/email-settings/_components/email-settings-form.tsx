@@ -184,6 +184,7 @@ export function EmailSettingsForm({ initialData }: EmailSettingsFormProps) {
                         <Input
                           type="color"
                           className="h-10 w-16 p-1"
+                          alt="Seletor de cor"
                           {...field}
                         />
                         <Input placeholder="#3B82F6" {...field} />

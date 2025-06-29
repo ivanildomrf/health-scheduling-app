@@ -18,7 +18,7 @@ Tecnologias e ferramentas utilizadas:
 
 - Drizzle como ORM
 
-Princípios Principais:
+Princípios essenciais:
 
 - Escreva código limpo, conciso e fácil de manter, seguindo princípios do SOLID e clean code.
 - Você conhece e nunca deixa de aplicar as boas práticas do SOLID, como princípio de Responsabilidade Única (SRP), Princípio Aberto/Fechado (OCP), conceito de Inversão de Dependência (DIP).
@@ -48,6 +48,8 @@ React/Next.js
 - Ao criar páginas, use os componentes dentro de [page-container.tsx](mdc:src/components/ui/page-container.tsx) para manter os padrões de margin, padding e spacing nas páginas. 
 Exemplo: [page.tsx](mdc:src/app/(protected)/professionals/page.tsx)
 - Sempre use a biblioteca "react-number-format" ao criar máscaras para inputs.
+
+Em qualquer codificação que for feita neste projeto, respeite sempre as configurações [next.config.ts](mdc:next.config.ts) e [eslint.config.mjs](mdc:eslint.config.mjs).
 
 
 

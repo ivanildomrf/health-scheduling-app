@@ -2,17 +2,22 @@ import { and, eq, lt } from "drizzle-orm";
 
 import { db } from "@/db";
 import { chatConversationsTable } from "@/db/schema";
+import { type ChatConversation } from "@/db/types";
 import { actionClient } from "@/lib/safe-action";
+
+interface AutoArchiveConversationsResult {
+  success: boolean;
+  data: {
+    archivedCount: number;
+    conversations: ChatConversation[];
+  };
+}
 
 export const autoArchiveConversations = actionClient.action(async () => {
   try {
-    console.log("=== autoArchiveConversations Action START ===");
-
     // Data limite: 1 dia atrás
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-
-    console.log("Arquivando conversas sem atividade desde:", oneDayAgo);
 
     // Buscar conversas ativas sem atividade há mais de 1 dia
     const conversationsToArchive = await db
@@ -26,12 +31,10 @@ export const autoArchiveConversations = actionClient.action(async () => {
       .where(
         and(
           eq(chatConversationsTable.status, "active"),
-          lt(chatConversationsTable.lastMessageAt, oneDayAgo)
-        )
+          lt(chatConversationsTable.lastMessageAt, oneDayAgo),
+        ),
       )
       .returning();
-
-    console.log(`Conversas arquivadas automaticamente: ${conversationsToArchive.length}`);
 
     return {
       success: true,
@@ -39,9 +42,8 @@ export const autoArchiveConversations = actionClient.action(async () => {
         archivedCount: conversationsToArchive.length,
         conversations: conversationsToArchive,
       },
-    };
-  } catch (error) {
-    console.error("Erro ao arquivar conversas automaticamente:", error);
+    } satisfies AutoArchiveConversationsResult;
+  } catch {
     throw new Error("Erro ao arquivar conversas automaticamente");
   }
-}); 
+});

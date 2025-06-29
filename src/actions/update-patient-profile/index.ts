@@ -259,8 +259,6 @@ export const updatePatientProfile = actionClient
       console.log("✅ Perfil atualizado com sucesso");
       return { success: true };
     } catch (error: any) {
-      console.error("❌ Erro ao atualizar perfil:", error);
-
       // Verificar se o erro é de CPF duplicado
       if (error?.cause?.constraint === "patients_cpf_unique") {
         return {

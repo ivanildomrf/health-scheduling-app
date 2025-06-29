@@ -102,7 +102,7 @@ export const sendChatMessage = actionClient
         success: true,
         data: newMessage[0],
       };
-    } catch (error) {
+    } catch {
       throw new Error("Falha ao enviar mensagem");
     }
   });

@@ -40,7 +40,7 @@ export const getChatMessages = actionClient
         success: true,
         data: messages,
       };
-    } catch (error) {
+    } catch {
       throw new Error("Falha ao buscar mensagens");
     }
   });

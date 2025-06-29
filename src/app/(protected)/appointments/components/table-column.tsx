@@ -4,21 +4,11 @@ import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-import { appointmentsTable } from "@/db/schema";
+import { type AppointmentWithRelations } from "@/db/types";
 
 import { AppointmentTableActions } from "./table-actions";
 
-type Appointment = typeof appointmentsTable.$inferSelect & {
-  patient: {
-    name: string;
-  };
-  professional: {
-    name: string;
-    speciality: string;
-  };
-};
-
-export const appointmentTableColumns: ColumnDef<Appointment>[] = [
+export const appointmentTableColumns: ColumnDef<AppointmentWithRelations>[] = [
   {
     id: "patient",
     accessorKey: "patient.name",

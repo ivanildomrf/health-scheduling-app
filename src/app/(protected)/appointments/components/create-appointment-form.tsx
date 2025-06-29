@@ -94,7 +94,7 @@ const CreateAppointmentForm = ({
   >(null);
   const [professionalAvailability, setProfessionalAvailability] =
     useState<ProfessionalAvailability | null>(null);
-  const [availableDates, setAvailableDates] = useState<Date[]>([]);
+
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -134,8 +134,6 @@ const CreateAppointmentForm = ({
             },
           );
 
-          setAvailableDates(dates);
-
           // Limpar seleção de data e horário quando trocar profissional
           form.setValue("date", undefined as any);
           form.setValue("time", "");
@@ -146,7 +144,7 @@ const CreateAppointmentForm = ({
         console.error("Erro ao buscar disponibilidade:", error);
         toast.error("Erro ao buscar disponibilidade do profissional");
         setProfessionalAvailability(null);
-        setAvailableDates([]);
+
         setAvailableTimes([]);
       },
     },
@@ -163,7 +161,7 @@ const CreateAppointmentForm = ({
       });
       setSelectedProfessional(null);
       setProfessionalAvailability(null);
-      setAvailableDates([]);
+
       setAvailableTimes([]);
     }
   }, [isOpen, form]);

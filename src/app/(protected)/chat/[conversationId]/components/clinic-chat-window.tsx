@@ -56,17 +56,19 @@ interface ClinicChatWindowProps {
     patientName: string;
     patientEmail: string;
   };
+  messages: ChatMessage[];
   userId: string;
   userName: string;
 }
 
 export function ClinicChatWindow({
   conversation,
+  messages: initialMessages,
   userId,
   userName,
 }: ClinicChatWindowProps) {
   const router = useRouter();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [newMessage, setNewMessage] = useState("");
   const [isArchiving, setIsArchiving] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);

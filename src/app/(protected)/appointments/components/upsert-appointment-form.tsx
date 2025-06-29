@@ -45,7 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { appointmentsTable, professionalsTable } from "@/db/schema";
+import { type AppointmentWithRelations, type Professional } from "@/db/types";
 
 import { useAppointmentsContext } from "./appointments-context";
 
@@ -74,15 +74,7 @@ interface ProfessionalAvailability {
 
 interface UpsertAppointmentFormProps {
   isOpen: boolean;
-  appointment: typeof appointmentsTable.$inferSelect & {
-    patient: {
-      name: string;
-    };
-    professional: {
-      name: string;
-      speciality: string;
-    };
-  };
+  appointment: AppointmentWithRelations;
   onSuccess?: () => void;
 }
 
@@ -91,17 +83,14 @@ const UpsertAppointmentForm = ({
   appointment,
   onSuccess,
 }: UpsertAppointmentFormProps) => {
-  const [professionals, setProfessionals] = useState<
-    (typeof professionalsTable.$inferSelect)[]
-  >([]);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [isFormInitialized, setIsFormInitialized] = useState(false);
   const [professionalAvailability, setProfessionalAvailability] =
     useState<ProfessionalAvailability | null>(null);
   const [availableDates, setAvailableDates] = useState<Date[]>([]);
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
-  const [selectedProfessional, setSelectedProfessional] = useState<
-    typeof professionalsTable.$inferSelect | null
-  >(null);
+  const [selectedProfessional, setSelectedProfessional] =
+    useState<Professional | null>(null);
   const { onRefresh } = useAppointmentsContext();
 
   const form = useForm<z.infer<typeof formSchema>>({

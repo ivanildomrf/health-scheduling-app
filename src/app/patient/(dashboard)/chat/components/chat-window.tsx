@@ -3,8 +3,8 @@
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowLeft, Check, Clock, Send } from "lucide-react";
-import { useAction } from "next-safe-action/hooks";
 import Link from "next/link";
+import { useAction } from "next-safe-action/hooks";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -63,8 +63,8 @@ export function ChatWindow({
         setMessages(data.data);
       }
     },
-    onError: ({ error }) => {
-      console.error("Erro ao carregar mensagens:", error);
+    onError: () => {
+      toast.error("Erro ao carregar mensagens");
     },
   });
 
@@ -89,9 +89,6 @@ export function ChatWindow({
   // Action para marcar mensagens como lidas
   const { execute: executeMarkAsRead } = useAction(markChatMessagesRead, {
     onSuccess: ({ data }) => {
-      console.log(
-        `📖 ${data?.data?.messagesRead || 0} mensagens marcadas como lidas`,
-      );
       // Atualizar as mensagens localmente
       if (data?.data?.updatedMessages) {
         setMessages((prev) =>
@@ -111,8 +108,8 @@ export function ChatWindow({
         );
       }
     },
-    onError: ({ error }) => {
-      console.error("Erro ao marcar mensagens como lidas:", error);
+    onError: () => {
+      toast.error("Erro ao marcar mensagens como lidas");
     },
   });
 

@@ -142,22 +142,6 @@ const PAISES = [
   { value: "ZA", label: "África do Sul" },
 ];
 
-// Graus de parentesco
-const GRAUS_PARENTESCO = [
-  { value: "pai", label: "Pai" },
-  { value: "mae", label: "Mãe" },
-  { value: "avo", label: "Avô" },
-  { value: "avo_feminino", label: "Avó" },
-  { value: "tio", label: "Tio" },
-  { value: "tia", label: "Tia" },
-  { value: "irmao", label: "Irmão" },
-  { value: "irma", label: "Irmã" },
-  { value: "tutor", label: "Tutor Legal" },
-  { value: "curador", label: "Curador" },
-  { value: "responsavel_legal", label: "Responsável Legal" },
-  { value: "outro", label: "Outro" },
-];
-
 // Tipos para API do IBGE
 interface IBGECity {
   id: number;
@@ -954,7 +938,6 @@ export function PatientProfileForm({ patientData }: PatientProfileFormProps) {
     if (isEditMode) {
       const birthCountry = form.getValues("birthCountry");
       const birthState = form.getValues("birthState");
-      const birthCity = form.getValues("birthCity");
 
       // Carregar estados se for país estrangeiro
       if (birthCountry && birthCountry !== "BR") {

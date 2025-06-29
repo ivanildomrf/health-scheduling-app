@@ -42,7 +42,7 @@ export const patientLogin = actionClient
 
       // Redirecionar para dashboard
       redirect("/patient/dashboard");
-    } catch (error) {
+    } catch {
       throw new Error("Erro no login");
     }
   });

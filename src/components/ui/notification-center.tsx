@@ -18,7 +18,10 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNotifications } from "@/hooks/use-notifications";
-import type { NotificationType } from "@/lib/types/notifications";
+import type {
+  NotificationType,
+  NotificationWithMeta,
+} from "@/lib/types/notifications";
 import { cn } from "@/lib/utils";
 
 import { NotificationItem } from "./notification-item";
@@ -278,7 +281,7 @@ export function NotificationCenter({
 }
 
 interface NotificationListProps {
-  notifications: any[]; // Temporariamente any para evitar conflito com tipo nativo Notification
+  notifications: NotificationWithMeta[];
   onMarkAsRead: (id: string) => void;
   onDelete: (id: string) => void;
   isLoading: boolean;
@@ -290,45 +293,29 @@ function NotificationList({
   onDelete,
   isLoading,
 }: NotificationListProps) {
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-          <p className="text-muted-foreground">Carregando notificações...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (notifications.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <Bell className="text-muted-foreground/50 mx-auto mb-4 h-12 w-12" />
-          <h3 className="text-muted-foreground mb-2 text-lg font-medium">
-            Nenhuma notificação encontrada
-          </h3>
-          <p className="text-muted-foreground text-sm">
-            Tente ajustar os filtros ou aguarde por novas notificações.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <ScrollArea className="h-[600px]">
-      <div className="space-y-3 px-6 py-4">
-        {notifications.map((notification) => (
-          <NotificationItem
-            key={notification.id}
-            notification={notification}
-            onMarkAsRead={onMarkAsRead}
-            onDelete={onDelete}
-          />
-        ))}
-      </div>
+    <ScrollArea className="h-[500px]">
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+        </div>
+      ) : notifications.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-8 text-center text-sm text-gray-500">
+          <Bell className="h-8 w-8" />
+          <p>Nenhuma notificação encontrada</p>
+        </div>
+      ) : (
+        <div className="divide-y">
+          {notifications.map((notification) => (
+            <NotificationItem
+              key={notification.id}
+              notification={notification}
+              onMarkAsRead={onMarkAsRead}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
     </ScrollArea>
   );
 }

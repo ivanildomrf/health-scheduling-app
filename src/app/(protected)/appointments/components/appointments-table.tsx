@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { getAppointments } from "@/actions/get-appointments";
 import { DataTable } from "@/components/ui/data-table";
 import { Pagination } from "@/components/ui/pagination";
+import { type AppointmentWithRelations } from "@/db/types";
 
 import { AppointmentsProvider } from "./appointments-context";
 import { appointmentTableColumns } from "./table-column";
@@ -14,7 +15,7 @@ import { appointmentTableColumns } from "./table-column";
 interface AppointmentsTableProps {
   clinicId: string;
   initialData?: {
-    appointments: any[];
+    appointments: AppointmentWithRelations[];
     pagination: {
       page: number;
       limit: number;
@@ -49,7 +50,7 @@ export function AppointmentsTable({
     limitRef.current = limit;
   }, [limit]);
 
-  const { execute, result, isExecuting } = useAction(getAppointments, {
+  const { execute, result } = useAction(getAppointments, {
     onSuccess: ({ data }) => {
       // Verificar se a página atual ainda é válida após o refresh
       if (data && data.pagination) {

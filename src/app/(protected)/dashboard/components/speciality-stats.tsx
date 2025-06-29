@@ -25,14 +25,6 @@ const specialityIcons: Record<string, string> = {
   Endocrinologia: "🧬",
 };
 
-const colors = [
-  "bg-blue-500",
-  "bg-green-500",
-  "bg-purple-500",
-  "bg-orange-500",
-  "bg-pink-500",
-];
-
 export function SpecialityStats({ specialities }: SpecialityStatsProps) {
   const totalCount = specialities.reduce((sum, spec) => sum + spec.count, 0);
   const maxCount = Math.max(...specialities.map((spec) => spec.count));

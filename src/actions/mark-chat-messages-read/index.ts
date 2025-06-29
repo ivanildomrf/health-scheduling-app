@@ -11,7 +11,7 @@ import { markChatMessagesReadSchema } from "./schema";
 export const markChatMessagesRead = actionClient
   .schema(markChatMessagesReadSchema)
   .action(async ({ parsedInput }) => {
-    const { conversationId, readerType, readerId, readerName } = parsedInput;
+    const { conversationId, readerType, readerId } = parsedInput;
 
     try {
       // Buscar mensagens não lidas da conversa
@@ -72,7 +72,7 @@ export const markChatMessagesRead = actionClient
           updatedMessages,
         },
       };
-    } catch (error) {
+    } catch {
       throw new Error("Falha ao marcar mensagens como lidas");
     }
   });

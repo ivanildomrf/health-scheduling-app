@@ -4,14 +4,14 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { notificationsTable } from "@/db/schema";
+import { notificationsTable, notificationTypeEnum } from "@/db/schema";
 import { actionClient } from "@/lib/safe-action";
 
 const getNotificationsSchema = z.object({
   userId: z.string().min(1, "ID do usuário é obrigatório"),
   limit: z.number().min(1).max(100).default(20),
   offset: z.number().min(0).default(0),
-  type: z.string().optional(),
+  type: z.enum(notificationTypeEnum.enumValues).optional(),
   isRead: z.boolean().optional(),
 });
 
@@ -25,7 +25,7 @@ export const getNotifications = actionClient
       const conditions = [eq(notificationsTable.userId, userId)];
 
       if (type) {
-        conditions.push(eq(notificationsTable.type, type as any));
+        conditions.push(eq(notificationsTable.type, type));
       }
 
       if (typeof isRead === "boolean") {
@@ -44,7 +44,7 @@ export const getNotifications = actionClient
         success: true,
         data: notifications,
       };
-    } catch (error) {
+    } catch {
       throw new Error("Erro ao buscar notificações");
     }
   });

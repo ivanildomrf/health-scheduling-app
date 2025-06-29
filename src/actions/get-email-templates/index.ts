@@ -4,8 +4,10 @@ import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
 import { db } from "@/db";
-import { emailTemplatesTable } from "@/db/schema";
+import { emailTemplatesTable,emailTemplateTypeEnum } from "@/db/schema";
 import { auth } from "@/lib/auth";
+
+type EmailTemplateType = (typeof emailTemplateTypeEnum.enumValues)[number];
 
 export async function getEmailTemplates() {
   const session = await auth.api.getSession({
@@ -77,7 +79,7 @@ export async function getEmailTemplateById(id: string) {
   }
 }
 
-export async function getEmailTemplateByType(type: string) {
+export async function getEmailTemplateByType(type: EmailTemplateType) {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -93,7 +95,7 @@ export async function getEmailTemplateByType(type: string) {
   try {
     const template = await db.query.emailTemplatesTable.findFirst({
       where: and(
-        eq(emailTemplatesTable.type, type as any),
+        eq(emailTemplatesTable.type, type),
         eq(emailTemplatesTable.clinicId, session.user.clinic.id),
       ),
       with: {
