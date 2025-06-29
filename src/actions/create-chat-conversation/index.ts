@@ -17,9 +17,6 @@ export const createChatConversation = actionClient
   .action(async ({ parsedInput }) => {
     const { patientId, subject, priority = 1, initialMessage } = parsedInput;
 
-    console.log("=== createChatConversation Action START ===");
-    console.log("parsedInput:", parsedInput);
-
     try {
       // Buscar dados do paciente
       const [patient] = await db
@@ -44,8 +41,6 @@ export const createChatConversation = actionClient
         })
         .returning();
 
-      console.log("Conversation created:", newConversation);
-
       // Criar registro de mensagens não lidas para a clínica
       await db.insert(chatUnreadMessagesTable).values({
         conversationId: newConversation.id,
@@ -67,8 +62,6 @@ export const createChatConversation = actionClient
       if (initialMessage && initialMessage.trim()) {
         const { chatMessagesTable } = await import("@/db/schema");
 
-        console.log("Creating initial message:", initialMessage.trim());
-
         const [createdMessage] = await db
           .insert(chatMessagesTable)
           .values({
@@ -80,8 +73,6 @@ export const createChatConversation = actionClient
             messageType: "text",
           })
           .returning();
-
-        console.log("Initial message created:", createdMessage);
 
         // Incrementar contador de não lidas para a clínica (receptionist)
         await db
@@ -96,16 +87,13 @@ export const createChatConversation = actionClient
               eq(chatUnreadMessagesTable.userType, "receptionist"),
             ),
           );
-
-        console.log("Unread count updated for clinic");
       }
 
       return {
         success: true,
         data: newConversation,
       };
-    } catch (error) {
-      console.error("Erro ao criar conversa:", error);
+    } catch {
       throw new Error("Falha ao criar conversa de chat");
     }
   });

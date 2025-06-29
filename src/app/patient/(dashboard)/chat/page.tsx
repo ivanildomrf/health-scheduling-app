@@ -43,12 +43,10 @@ export default async function PatientChatPage() {
       .where(
         and(
           eq(chatConversationsTable.patientId, mockSession.patientId),
-          eq(chatConversationsTable.status, "active") // Filtrar apenas conversas ativas
-        )
+          eq(chatConversationsTable.status, "active"), // Filtrar apenas conversas ativas
+        ),
       )
       .orderBy(desc(chatConversationsTable.lastMessageAt));
-
-    console.log(`📋 Conversas ativas carregadas para paciente: ${conversations.length}`);
 
     return (
       <div className="space-y-6">

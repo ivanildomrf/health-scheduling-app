@@ -7,17 +7,13 @@ import {
 
 async function seedPlans() {
   try {
-    console.log("🌱 Iniciando seed dos planos...");
-
     // Verificar se já existem planos
     const existingPlans = await db.select().from(plansTable);
     if (existingPlans.length > 0) {
-      console.log("⚠️  Planos já existem no banco de dados. Pulando seed...");
       return;
     }
 
     // Inserir os planos disponíveis
-    console.log("📋 Inserindo planos...");
     const plans = await db
       .insert(plansTable)
       .values([
@@ -45,10 +41,7 @@ async function seedPlans() {
       ])
       .returning();
 
-    console.log(`✅ ${plans.length} planos criados com sucesso!`);
-
     // Inserir as funcionalidades do sistema
-    console.log("🔧 Inserindo funcionalidades...");
     const features = await db
       .insert(planFeaturesTable)
       .values([
@@ -203,11 +196,7 @@ async function seedPlans() {
       ])
       .returning();
 
-    console.log(`✅ ${features.length} funcionalidades criadas com sucesso!`);
-
     // Configurar funcionalidades para cada plano
-    console.log("🔗 Configurando funcionalidades dos planos...");
-
     // Configurar plano Essential
     const essentialPlan = plans.find((p) => p.slug === "essential");
     const professionalPlan = plans.find((p) => p.slug === "professional");
@@ -268,22 +257,16 @@ async function seedPlans() {
         limitValue: feature.name === "max_professionals" ? null : null, // null = ilimitado
       });
     }
-
-    console.log("✅ Funcionalidades dos planos configuradas com sucesso!");
-    console.log("🎉 Seed concluído com sucesso!");
-  } catch (error) {
-    console.error("❌ Erro durante o seed:", error);
-    throw error;
+  } catch {
+    throw new Error("Erro ao inserir planos");
   }
 }
 
 // Executar o seed
 seedPlans()
   .then(() => {
-    console.log("🏁 Processo finalizado!");
     process.exit(0);
   })
-  .catch((error) => {
-    console.error("💥 Falha no seed:", error);
+  .catch(() => {
     process.exit(1);
   });

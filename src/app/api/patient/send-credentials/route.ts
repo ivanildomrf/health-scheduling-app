@@ -101,16 +101,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("✅ Credenciais enviadas:", {
-      email: patient.email,
-      messageId: emailResult.messageId,
-      previewUrl: emailResult.previewUrl,
-    });
-
-    if (emailResult.previewUrl) {
-      console.log("🔗 Preview do email (credenciais):", emailResult.previewUrl);
-    }
-
     return NextResponse.json({
       success: true,
       data: {
@@ -122,8 +112,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Erro ao enviar credenciais:", error);
-
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Dados inválidos", details: error.errors },

@@ -5,8 +5,6 @@ import { clinicsTable, plansTable } from "../src/db/schema";
 
 async function setDefaultPlan() {
   try {
-    console.log("🔧 Definindo plano padrão para clínicas...");
-
     // Buscar o plano Essential
     const essentialPlan = await db.query.plansTable.findFirst({
       where: eq(plansTable.slug, "essential"),
@@ -22,12 +20,7 @@ async function setDefaultPlan() {
       where: isNull(clinicsTable.currentPlanId),
     });
 
-    console.log(
-      `📋 Encontradas ${clinicsWithoutPlan.length} clínicas sem plano definido`,
-    );
-
     if (clinicsWithoutPlan.length === 0) {
-      console.log("✅ Todas as clínicas já têm plano definido!");
       return;
     }
 
@@ -42,24 +35,17 @@ async function setDefaultPlan() {
           updatedAt: new Date(),
         })
         .where(eq(clinicsTable.id, clinic.id));
-
-      console.log(`✅ Plano Essential definido para clínica: ${clinic.name}`);
     }
-
-    console.log("🎉 Processo concluído com sucesso!");
-  } catch (error) {
-    console.error("❌ Erro durante o processo:", error);
-    throw error;
+  } catch {
+    throw new Error("Erro ao definir plano padrão");
   }
 }
 
 // Executar o script
 setDefaultPlan()
   .then(() => {
-    console.log("🏁 Processo finalizado!");
     process.exit(0);
   })
-  .catch((error) => {
-    console.error("💥 Falha no processo:", error);
+  .catch(() => {
     process.exit(1);
   });

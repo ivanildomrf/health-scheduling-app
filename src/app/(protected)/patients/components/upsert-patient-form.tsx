@@ -80,19 +80,14 @@ const UpsertPatientForm = ({
 
   const upsertPatientAction = useAction(upsertPatient, {
     onSuccess: ({ data }) => {
-      console.log("🎉 Sucesso ao salvar paciente:", data);
       toast.success("Paciente cadastrado com sucesso");
 
       if (data && "patient" in data && data.patient?.id) {
-        console.log("✅ Definindo savedPatientId:", data.patient.id);
         setSavedPatientId(data.patient.id);
 
         // Se é um novo paciente (não estava editando), não fechar o dialog ainda
         // para permitir envio de credenciais/convites
         if (!patient?.id) {
-          console.log(
-            "📝 Novo paciente - mantendo dialog aberto para envio de emails",
-          );
           // Não chamar onSuccess() ainda para manter o dialog aberto
           return;
         }
@@ -102,7 +97,6 @@ const UpsertPatientForm = ({
       onSuccess?.();
     },
     onError: (error) => {
-      console.error("❌ Erro ao salvar paciente:", error);
       toast.error("Erro ao cadastrar paciente");
     },
   });
@@ -129,8 +123,7 @@ const UpsertPatientForm = ({
       } else {
         toast.error("Erro ao enviar credenciais");
       }
-    } catch (error) {
-      console.error("Erro ao enviar credenciais:", error);
+    } catch {
       toast.error("Erro ao enviar credenciais");
     } finally {
       setIsSendingCredentials(false);
@@ -159,8 +152,7 @@ const UpsertPatientForm = ({
       } else {
         toast.error("Erro ao enviar convite");
       }
-    } catch (error) {
-      console.error("Erro ao enviar convite:", error);
+    } catch {
       toast.error("Erro ao enviar convite");
     } finally {
       setIsSendingInvite(false);

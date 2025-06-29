@@ -2,6 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import Error from "next/error";
 import { z } from "zod";
 
 import { db } from "@/db";
@@ -104,20 +105,14 @@ const updatePatientProfileSchema = z.object({
 export const updatePatientProfile = actionClient
   .schema(updatePatientProfileSchema)
   .action(async ({ parsedInput }) => {
-    console.log("🚀 Server Action iniciada - updatePatientProfile");
-    console.log("📋 Dados recebidos:", parsedInput);
-
     const session = await getPatientSession();
-    console.log("👤 Sessão:", session);
 
     if (!session) {
-      console.error("❌ Sessão não encontrada");
       throw new Error("Não autorizado");
     }
 
     // Verificar se o paciente está tentando atualizar o próprio perfil
     if (session.patientId !== parsedInput.patientId) {
-      console.error("❌ Tentativa de atualizar perfil de outro paciente");
       throw new Error("Não autorizado");
     }
 
@@ -255,8 +250,6 @@ export const updatePatientProfile = actionClient
 
       revalidatePath("/patient/profile");
       revalidatePath("/patient/dashboard");
-
-      console.log("✅ Perfil atualizado com sucesso");
       return { success: true };
     } catch (error: any) {
       // Verificar se o erro é de CPF duplicado

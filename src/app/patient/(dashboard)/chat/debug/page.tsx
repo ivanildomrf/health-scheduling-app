@@ -2,10 +2,7 @@ import { getPatientConversations } from "@/actions/get-patient-conversations";
 import { getPatientSession } from "@/helpers/patient-session";
 
 export default async function DebugChatPage() {
-  console.log("=== Debug Chat Page ===");
-
   const session = await getPatientSession();
-  console.log("Session:", session);
 
   if (!session) {
     return (
@@ -23,14 +20,11 @@ export default async function DebugChatPage() {
   let error;
 
   try {
-    console.log("Calling action with patientId:", session.patientId);
     conversationsResult = await getPatientConversations({
       patientId: session.patientId,
     });
-    console.log("Action result:", conversationsResult);
   } catch (err) {
     error = err;
-    console.error("Action error:", err);
   }
 
   return (

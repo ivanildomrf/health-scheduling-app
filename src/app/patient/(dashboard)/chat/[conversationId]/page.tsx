@@ -2,10 +2,7 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
 import { db } from "@/db";
-import { 
-  chatConversationsTable, 
-  chatMessagesTable 
-} from "@/db/schema";
+import { chatConversationsTable, chatMessagesTable } from "@/db/schema";
 import { getPatientSession } from "@/helpers/patient-session";
 
 import { ChatWindow } from "../components/chat-window";
@@ -67,8 +64,6 @@ export default async function ChatConversationPage({
       .from(chatMessagesTable)
       .where(eq(chatMessagesTable.conversationId, conversationId))
       .orderBy(chatMessagesTable.createdAt);
-
-    console.log(`📨 Mensagens carregadas para paciente: ${messages.length}`);
 
     return (
       <div className="h-[calc(100vh-8rem)]">

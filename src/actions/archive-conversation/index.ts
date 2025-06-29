@@ -10,9 +10,6 @@ export const archiveConversation = actionClient
   .schema(archiveConversationSchema)
   .action(async ({ parsedInput }) => {
     try {
-      console.log("=== archiveConversation Action START ===");
-      console.log("parsedInput:", parsedInput);
-
       const { conversationId, userId } = parsedInput;
 
       // Atualizar status da conversa para 'archived'
@@ -31,14 +28,11 @@ export const archiveConversation = actionClient
         throw new Error("Conversa não encontrada");
       }
 
-      console.log("Conversation archived:", updatedConversation);
-
       return {
         success: true,
         data: updatedConversation,
       };
-    } catch (error) {
-      console.error("Erro ao arquivar conversa:", error);
+    } catch {
       throw new Error("Erro ao arquivar conversa");
     }
   });

@@ -109,16 +109,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("✅ Convite enviado:", {
-      email: patient.email,
-      messageId: emailResult.messageId,
-      previewUrl: emailResult.previewUrl,
-    });
-
-    if (emailResult.previewUrl) {
-      console.log("🔗 Preview do email (convite):", emailResult.previewUrl);
-    }
-
     return NextResponse.json({
       success: true,
       data: {
@@ -131,8 +121,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Erro ao enviar convite:", error);
-
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Dados inválidos", details: error.errors },
