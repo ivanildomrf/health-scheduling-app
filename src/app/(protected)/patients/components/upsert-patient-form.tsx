@@ -249,23 +249,7 @@ const UpsertPatientForm = ({
               </FormItem>
             )}
           />
-          <DialogFooter className="flex-col gap-4">
-            {/* Botão principal de salvar - só aparece se não foi salvo ainda ou se está editando */}
-            {(!savedPatientId || patient?.id) && (
-              <Button
-                type="submit"
-                disabled={upsertPatientAction.isPending}
-                className="w-full"
-              >
-                <UserPlus className="mr-2 h-4 w-4" />
-                {upsertPatientAction.isPending
-                  ? "Salvando..."
-                  : patient?.id
-                    ? "Atualizar Paciente"
-                    : "Salvar Paciente"}
-              </Button>
-            )}
-
+          <DialogFooter className="flex flex-col gap-4">
             {/* Seção de acesso ao portal - aparece após salvar OU se está editando paciente existente */}
             {(savedPatientId || patient?.id) && (
               <div className="w-full space-y-4 border-t border-gray-200 pt-4">
@@ -320,8 +304,19 @@ const UpsertPatientForm = ({
                   </Button>
                 </div>
 
-                {/* Botão finalizar - só aparece para novos pacientes */}
-                {!patient?.id && (
+                {/* Botão principal - Atualizar ou Finalizar */}
+                {patient?.id ? (
+                  <Button
+                    type="submit"
+                    disabled={upsertPatientAction.isPending}
+                    className="w-full"
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    {upsertPatientAction.isPending
+                      ? "Salvando..."
+                      : "Atualizar Paciente"}
+                  </Button>
+                ) : (
                   <Button
                     type="button"
                     variant="secondary"
@@ -332,6 +327,20 @@ const UpsertPatientForm = ({
                   </Button>
                 )}
               </div>
+            )}
+
+            {/* Botão de salvar - só aparece se não foi salvo ainda */}
+            {!savedPatientId && !patient?.id && (
+              <Button
+                type="submit"
+                disabled={upsertPatientAction.isPending}
+                className="w-full"
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                {upsertPatientAction.isPending
+                  ? "Salvando..."
+                  : "Salvar Paciente"}
+              </Button>
             )}
           </DialogFooter>
         </form>
